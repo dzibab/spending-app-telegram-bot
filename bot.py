@@ -1,7 +1,7 @@
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from config import BOT_TOKEN
-from db import init_db
+from db import create_tables
 from handlers.start import start
 from handlers.add import add_conversation_handler
 from handlers.list import list_spendings
@@ -12,7 +12,7 @@ from handlers.export import export_spendings
 from handlers.non_command import handle_non_command
 
 
-init_db()
+create_tables()
 
 app = Application.builder().token(BOT_TOKEN).build()
 app.add_handler(CommandHandler("start", start))

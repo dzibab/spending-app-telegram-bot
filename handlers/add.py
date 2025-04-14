@@ -4,14 +4,11 @@ from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
 
 from db import get_connection
+from constants import DEFAULT_CATEGORIES, DEFAULT_CURRENCIES
 
 
 # Define states for the conversation
 DESCRIPTION, AMOUNT, CURRENCY, CATEGORY, DATE = range(5)
-# Define the basic currencies
-CURRENCIES = ["USD", "EUR", "PLN"]
-# Define default categories
-DEFAULT_CATEGORIES = ["Grocery", "Transport", "Entertainment", "Shopping", "Other"]
 
 
 def parse_date(value: str) -> date:
@@ -47,7 +44,7 @@ async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["amount"] = amount
 
         # Create a keyboard with currency options
-        keyboard = [[c] for c in CURRENCIES]
+        keyboard = [[c] for c in DEFAULT_CURRENCIES]
         reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
 
         await update.message.reply_text(
@@ -62,8 +59,8 @@ async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     currency = update.message.text.upper()
-    if currency not in CURRENCIES:
-        keyboard = [[c] for c in CURRENCIES]
+    if currency not in DEFAULT_CURRENCIES:
+        keyboard = [[c] for c in DEFAULT_CURRENCIES]
         reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
         await update.message.reply_text(
             "❌ Invalid currency code. Please select a valid currency from the options below:",
