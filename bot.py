@@ -4,9 +4,9 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from config import BOT_TOKEN
 from db import create_tables
 from handlers.start import start
-from handlers.add import add_conversation_handler
+from handlers.add_spending import add_spending_conversation_handler
 from handlers.list import list_spendings
-from handlers.remove import remove
+from handlers.remove_spending import remove
 from handlers.total import total
 from handlers.month import month, handle_month_selection
 from handlers.export import export_spendings
@@ -31,7 +31,7 @@ if __name__ == "__main__":
 
     app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(add_conversation_handler)
+    app.add_handler(add_spending_conversation_handler)
     app.add_handler(CommandHandler("remove", remove))
     app.add_handler(CommandHandler("list", list_spendings))
     app.add_handler(CommandHandler("month", month))

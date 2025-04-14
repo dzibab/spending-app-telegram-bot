@@ -157,7 +157,7 @@ async def cancel(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
 
 # Define the ConversationHandler
-add_conversation_handler = ConversationHandler(
+add_spending_conversation_handler = ConversationHandler(
     entry_points=[CommandHandler("add", start_add)],
     states={
         DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_description)],
