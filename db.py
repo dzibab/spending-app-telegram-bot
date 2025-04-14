@@ -94,3 +94,62 @@ def get_user_categories(user_id: int) -> list:
         return [row[0] for row in conn.execute(
             "SELECT category_name FROM categories WHERE user_id = ?", (user_id,)
         ).fetchall()]
+
+
+def add_currency_to_user(user_id: int, currency: str) -> bool:
+    """Add a new currency for a user."""
+    with get_connection() as conn:
+        try:
+            conn.execute("""
+                INSERT INTO currencies (user_id, currency_code)
+                VALUES (?, ?);
+            """, (user_id, currency))
+            return True
+        except sqlite3.IntegrityError:
+            return False  # Currency already exists
+        except Exception as e:
+            print(f"Error adding currency: {e}")
+            return False
+
+
+def add_category_to_user(user_id: int, category: str) -> bool:
+    """Add a new category for a user."""
+    with get_connection() as conn:
+        try:
+            conn.execute("""
+                INSERT INTO categories (user_id, category_name)
+                VALUES (?, ?);
+            """, (user_id, category))
+            return True
+        except sqlite3.IntegrityError:
+            return False  # Category already exists
+        except Exception as e:
+            print(f"Error adding category: {e}")
+            return False
+
+def remove_currency_from_user(user_id: int, currency: str) -> bool:
+    """Remove a currency for a user."""
+    with get_connection() as conn:
+        try:
+            conn.execute("""
+                DELETE FROM currencies
+                WHERE user_id = ? AND currency_code = ?;
+            """, (user_id, currency))
+            return True
+        except Exception as e:
+            print(f"Error removing currency: {e}")
+            return False
+
+
+def remove_category_from_user(user_id: int, category: str) -> bool:
+    """Remove a category for a user."""
+    with get_connection() as conn:
+        try:
+            conn.execute("""
+                DELETE FROM categories
+                WHERE user_id = ? AND category_name = ?;
+            """, (user_id, category))
+            return True
+        except Exception as e:
+            print(f"Error removing category: {e}")
+            return False

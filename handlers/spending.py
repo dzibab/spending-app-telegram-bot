@@ -158,7 +158,7 @@ async def cancel(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
 # Define the ConversationHandler
 add_spending_conversation_handler = ConversationHandler(
-    entry_points=[CommandHandler("add", start_add)],
+    entry_points=[CommandHandler("add_spending", start_add)],
     states={
         DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_description)],
         AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_amount)],
@@ -168,3 +168,23 @@ add_spending_conversation_handler = ConversationHandler(
     },
     fallbacks=[CommandHandler("cancel", cancel)],
 )
+
+
+async def remove_spending(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    args = context.args
+
+    if len(args) != 1 or not args[0].isdigit():
+        await update.message.reply_text("Usage: /remove <spending_id>")
+        return
+
+    spending_id = int(args[0])
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "DELETE FROM spendings WHERE id = ? AND user_id = ?",
+            (spending_id, user_id)
+        )
+        if cursor.rowcount == 0:
+            await update.message.reply_text("❌ Not found.")
+        else:
+            await update.message.reply_text("✅ Spending removed.")
