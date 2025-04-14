@@ -1,13 +1,17 @@
 from datetime import datetime, date
 
-from telegram import Update, ReplyKeyboardRemove
+from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
 
 from db import get_connection
-from utils.validation import is_valid_currency
+
 
 # Define states for the conversation
 DESCRIPTION, AMOUNT, CURRENCY, CATEGORY, DATE = range(5)
+# Define the basic currencies
+CURRENCIES = ["USD", "EUR", "PLN"]
+# Define default categories
+DEFAULT_CATEGORIES = ["Grocery", "Transport", "Entertainment", "Shopping", "Other"]
 
 
 def parse_date(value: str) -> date:
@@ -19,8 +23,11 @@ def parse_date(value: str) -> date:
     raise ValueError("Invalid date format. Use YYYY-MM-DD or DD-MM-YYYY.")
 
 
-async def start_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Please provide a description (or type 'skip' to leave it empty):")
+async def start_add(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    # Add a 'skip' button for the description state
+    keyboard = [["skip"]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+    await update.message.reply_text("Please provide a description (or press 'skip' to leave it empty):", reply_markup=reply_markup)
     return DESCRIPTION
 
 
@@ -30,7 +37,7 @@ async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data["description"] = description
     else:
         context.user_data["description"] = ""
-    await update.message.reply_text("Enter the amount:")
+    await update.message.reply_text("Enter the amount:", reply_markup=ReplyKeyboardRemove())
     return AMOUNT
 
 
@@ -38,7 +45,15 @@ async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         amount = float(update.message.text)
         context.user_data["amount"] = amount
-        await update.message.reply_text("Enter the currency (3-letter ISO code):")
+
+        # Create a keyboard with currency options
+        keyboard = [[c] for c in CURRENCIES]
+        reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+
+        await update.message.reply_text(
+            "Enter the currency:",
+            reply_markup=reply_markup
+        )
         return CURRENCY
     except ValueError:
         await update.message.reply_text("❌ Invalid amount. Please enter a valid number:")
@@ -47,18 +62,31 @@ async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     currency = update.message.text.upper()
-    if not is_valid_currency(currency):
-        await update.message.reply_text("❌ Invalid currency code. Use a valid 3-letter ISO currency:")
+    if currency not in CURRENCIES:
+        keyboard = [[c] for c in CURRENCIES]
+        reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+        await update.message.reply_text(
+            "❌ Invalid currency code. Please select a valid currency from the options below:",
+            reply_markup=reply_markup
+        )
         return CURRENCY
     context.user_data["currency"] = currency
-    await update.message.reply_text("Enter the category:")
+
+    # Add default categories as buttons
+    keyboard = [[category] for category in DEFAULT_CATEGORIES]
+    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+    await update.message.reply_text("Enter the category:", reply_markup=reply_markup)
     return CATEGORY
 
 
 async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     category = update.message.text
     context.user_data["category"] = category
-    await update.message.reply_text("Enter the date (YYYY-MM-DD or DD-MM-YYYY) or type 'today' for today's date:")
+
+    # Add a 'today' button for the date state
+    keyboard = [["today"]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+    await update.message.reply_text("Enter the date (YYYY-MM-DD or DD-MM-YYYY) or press 'today' for today's date:", reply_markup=reply_markup)
     return DATE
 
 
@@ -111,7 +139,7 @@ async def write_spending_to_db(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(f"❌ Error while saving to the database: {e}")
 
 
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cancel(update: Update, _: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Operation canceled.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
