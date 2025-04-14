@@ -37,19 +37,47 @@ def create_tables() -> None:
         """)
 
 
-def initialize_user_defaults(user_id: int) -> None:
-    default_currencies = [(user_id, currency) for currency in DEFAULT_CURRENCIES]
-    default_categories = [(user_id, category) for category in DEFAULT_CATEGORIES]
-
+def initialize_user_currencies(user_id: int) -> None:
     with get_connection() as conn:
+        # Check if the user already has currencies initialized
+        currencies_exist = conn.execute(
+            "SELECT 1 FROM currencies WHERE user_id = ? LIMIT 1;", (user_id,)
+        ).fetchone()
+
+        # Skip initialization if currencies exist
+        if currencies_exist:
+            return
+
+        # Initialize default currencies
+        default_currencies = [(user_id, currency) for currency in DEFAULT_CURRENCIES]
         conn.executemany("""
             INSERT OR IGNORE INTO currencies (user_id, currency_code)
             VALUES (?, ?);
         """, default_currencies)
+
+
+def initialize_user_categories(user_id: int) -> None:
+    with get_connection() as conn:
+        # Check if the user already has categories initialized
+        categories_exist = conn.execute(
+            "SELECT 1 FROM categories WHERE user_id = ? LIMIT 1;", (user_id,)
+        ).fetchone()
+
+        # Skip initialization if categories exist
+        if categories_exist:
+            return
+
+        # Initialize default categories
+        default_categories = [(user_id, category) for category in DEFAULT_CATEGORIES]
         conn.executemany("""
             INSERT OR IGNORE INTO categories (user_id, category_name)
             VALUES (?, ?);
         """, default_categories)
+
+
+def initialize_user_defaults(user_id: int) -> None:
+    initialize_user_currencies(user_id)
+    initialize_user_categories(user_id)
 
 
 def get_user_currencies(user_id: int) -> list:
