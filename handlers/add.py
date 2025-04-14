@@ -21,10 +21,10 @@ def parse_date(value: str) -> date:
 
 async def start_add(update: Update, _: ContextTypes.DEFAULT_TYPE):
     # Add a 'skip' button for the description state
-    keyboard = [["skip"]]
+    keyboard = [["Skip"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
     await update.message.reply_text(
-        "Please provide a description (or press 'skip' to leave it empty):",
+        "Please provide a description:",
         reply_markup=reply_markup,
         )
     return DESCRIPTION
@@ -93,10 +93,10 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["category"] = category
 
     # Add a 'today' button for the date state
-    keyboard = [["today"]]
+    keyboard = [["Today"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
     await update.message.reply_text(
-        "Enter the date (YYYY-MM-DD or DD-MM-YYYY) or press 'today' for today's date:",
+        "Enter the date or press 'Today' for today's date:",
         reply_markup=reply_markup,
         )
     return DATE
