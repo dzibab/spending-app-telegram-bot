@@ -9,5 +9,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Use /list to view your last 10 expenses.\n"
         "Use /month <month> <year> to view spendings for a specific month.\n"
         "Use /remove <id> to delete spending entry.\n"
+        "Use /export to download your spendings as a CSV file.\n"
         "Use /total <category> to view total spendings."
     )
