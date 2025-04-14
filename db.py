@@ -37,7 +37,7 @@ def create_tables() -> None:
         """)
 
 
-def populate_default_values(user_id: int) -> None:
+def initialize_user_defaults(user_id: int) -> None:
     default_currencies = [(user_id, currency) for currency in DEFAULT_CURRENCIES]
     default_categories = [(user_id, category) for category in DEFAULT_CATEGORIES]
 
@@ -50,3 +50,19 @@ def populate_default_values(user_id: int) -> None:
             INSERT OR IGNORE INTO categories (user_id, category_name)
             VALUES (?, ?);
         """, default_categories)
+
+
+def get_user_currencies(user_id: int) -> list:
+    """Fetch the list of currencies for a user."""
+    with get_connection() as conn:
+        return [row[0] for row in conn.execute(
+            "SELECT currency_code FROM currencies WHERE user_id = ?", (user_id,)
+        ).fetchall()]
+
+
+def get_user_categories(user_id: int) -> list:
+    """Fetch the list of categories for a user."""
+    with get_connection() as conn:
+        return [row[0] for row in conn.execute(
+            "SELECT category_name FROM categories WHERE user_id = ?", (user_id,)
+        ).fetchall()]

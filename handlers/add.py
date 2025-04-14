@@ -3,8 +3,7 @@ from datetime import datetime, date
 from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
 
-from db import get_connection
-from constants import DEFAULT_CATEGORIES, DEFAULT_CURRENCIES
+from db import get_connection, get_user_categories, get_user_currencies
 
 
 # Define states for the conversation
@@ -24,7 +23,10 @@ async def start_add(update: Update, _: ContextTypes.DEFAULT_TYPE):
     # Add a 'skip' button for the description state
     keyboard = [["skip"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
-    await update.message.reply_text("Please provide a description (or press 'skip' to leave it empty):", reply_markup=reply_markup)
+    await update.message.reply_text(
+        "Please provide a description (or press 'skip' to leave it empty):",
+        reply_markup=reply_markup,
+        )
     return DESCRIPTION
 
 
@@ -43,8 +45,12 @@ async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
         amount = float(update.message.text)
         context.user_data["amount"] = amount
 
+        # Fetch user-specific currencies
+        user_id = update.effective_user.id
+        currencies = get_user_currencies(user_id)
+
         # Create a keyboard with currency options
-        keyboard = [[c] for c in DEFAULT_CURRENCIES]
+        keyboard = [[c] for c in currencies]
         reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
 
         await update.message.reply_text(
@@ -58,9 +64,12 @@ async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    currencies = get_user_currencies(user_id)
+
     currency = update.message.text.upper()
-    if currency not in DEFAULT_CURRENCIES:
-        keyboard = [[c] for c in DEFAULT_CURRENCIES]
+    if currency not in currencies:
+        keyboard = [[c] for c in currencies]
         reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
         await update.message.reply_text(
             "❌ Invalid currency code. Please select a valid currency from the options below:",
@@ -69,8 +78,11 @@ async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return CURRENCY
     context.user_data["currency"] = currency
 
-    # Add default categories as buttons
-    keyboard = [[category] for category in DEFAULT_CATEGORIES]
+    # Fetch user-specific categories
+    categories = get_user_categories(user_id)
+
+    # Add categories as buttons
+    keyboard = [[category] for category in categories]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
     await update.message.reply_text("Enter the category:", reply_markup=reply_markup)
     return CATEGORY
@@ -83,7 +95,10 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Add a 'today' button for the date state
     keyboard = [["today"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
-    await update.message.reply_text("Enter the date (YYYY-MM-DD or DD-MM-YYYY) or press 'today' for today's date:", reply_markup=reply_markup)
+    await update.message.reply_text(
+        "Enter the date (YYYY-MM-DD or DD-MM-YYYY) or press 'today' for today's date:",
+        reply_markup=reply_markup,
+        )
     return DATE
 
 
