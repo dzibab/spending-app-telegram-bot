@@ -7,6 +7,7 @@ from handlers.add import add
 from handlers.list import list_spendings
 from handlers.remove import remove
 from handlers.total import total
+from handlers.month import month
 
 
 init_db()
@@ -17,5 +18,6 @@ app.add_handler(CommandHandler("add", add))
 app.add_handler(CommandHandler("list", list_spendings))
 app.add_handler(CommandHandler("remove", remove))
 app.add_handler(CommandHandler("total", total))
+app.add_handler(CommandHandler("month", month))
 
 app.run_polling()
