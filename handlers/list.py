@@ -1,10 +1,12 @@
+import textwrap
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from db import get_connection
 
 
-async def list_spendings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def list_spendings(update: Update, _: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
     with get_connection() as conn:
@@ -21,11 +23,21 @@ async def list_spendings(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("📭 No spendings found.")
         return
 
+    # Determine column widths based on the longest element in each column
+    col_widths = {
+        "date": max(len(row[4]) for row in rows),
+        "amount": max(len(f"{row[1]:.2f}") for row in rows),
+        "currency": max(len(row[2]) for row in rows),
+        "category": max(len(row[3]) for row in rows),
+        "description": max(len(row[0]) for row in rows if row[0]) if any(row[0] for row in rows) else 0,
+    }
+
     lines = []
     for desc, amount, currency, cat, dt in rows:
-        line = f"{dt} | {amount} {currency} | {cat}"
+        line = f"{dt:<{col_widths['date']}} | {amount:>{col_widths['amount']}.2f} {currency:<{col_widths['currency']}} | {cat:<{col_widths['category']}}"
         if desc:
-            line += f" | {desc}"
+            line += f" | {desc:<{col_widths['description']}}"
         lines.append(line)
 
-    await update.message.reply_text("💸 Your last 10 spendings:\n\n" + "\n".join(lines))
+    formatted_message = "💸 Your last 10 spendings:\n\n" + "\n".join(lines)
+    await update.message.reply_text(f"```\n{textwrap.dedent(formatted_message)}\n```", parse_mode="Markdown")
