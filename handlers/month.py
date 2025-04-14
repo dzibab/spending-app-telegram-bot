@@ -3,49 +3,76 @@ from datetime import datetime
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from db import get_connection
 
 
-async def month(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def month(update: Update, _: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    args = context.args
 
-    if len(args) != 2:
-        await update.message.reply_text("Usage: /month <month> <year>")
-        return
-
-    try:
-        month = int(args[0])
-        year = int(args[1])
-
-        if not (1 <= month <= 12):
-            await update.message.reply_text("❌ Please enter a valid month (1-12).")
-            return
-    except ValueError:
-        await update.message.reply_text("❌ Invalid month or year. Please provide numeric values.")
-        return
-
-    # Query to fetch spending data for the specified month and year
+    # Query to fetch unique month-year combinations
     query = """
+        SELECT DISTINCT strftime('%m', date) as month, strftime('%Y', date) as year
+        FROM spendings
+        WHERE user_id = ?
+        ORDER BY year DESC, month DESC
+    """
+    with get_connection() as conn:
+        cursor = conn.execute(query, (user_id,))
+        rows = cursor.fetchall()
+
+    if not rows:
+        await update.message.reply_text("📭 No spendings found.")
+        return
+
+    # Create inline keyboard buttons
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text=f"{datetime(int(year), int(month), 1).strftime('%B %Y')}",
+                callback_data=f"month:{month}:{year}",
+            )
+        ]
+        for month, year in rows
+    ]
+    reply_markup = InlineKeyboardMarkup(buttons)
+
+    await update.message.reply_text("📅 Select a month:", reply_markup=reply_markup)
+
+
+async def handle_month_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    # Parse callback data
+    _, month, year = query.data.split(":")
+    month = int(month)
+    year = int(year)
+    user_id = query.from_user.id
+
+    # Query to fetch spending data for the selected month and year
+    spending_query = """
         SELECT category, SUM(amount) as total
         FROM spendings
         WHERE user_id = ? AND strftime('%Y', date) = ? AND strftime('%m', date) = ?
         GROUP BY category
     """
     with get_connection() as conn:
-        cursor = conn.execute(query, (user_id, str(year), f"{month:02d}"))
+        cursor = conn.execute(spending_query, (user_id, str(year), f"{month:02d}"))
         rows = cursor.fetchall()
 
     if not rows:
-        await update.message.reply_text("📭 No spendings found for this month.")
+        await query.edit_message_text("📭 No spendings found for this month.")
         return
 
     # Prepare data for plotting
     data = pd.DataFrame(rows, columns=["category", "total"])
+    await send_plot(query, data, month, year)
 
+
+async def send_plot(query, data: pd.DataFrame, month: int, year: int):
     # Plot the chart
     plt.figure(figsize=(10, 6))
     plt.bar(data['category'], data['total'], color='skyblue')
@@ -61,5 +88,5 @@ async def month(update: Update, context: ContextTypes.DEFAULT_TYPE):
     buf.seek(0)
 
     # Send the chart as a photo
-    await update.message.reply_photo(photo=buf)
+    await query.message.reply_photo(photo=buf)
     buf.close()
