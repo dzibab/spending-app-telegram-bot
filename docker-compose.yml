@@ -4,6 +4,7 @@ services:
     container_name: telegram_spending_bot
     environment:
       - PYTHONUNBUFFERED=1  # To prevent buffering in logs
+      - UV_LINK_MODE=copy
     volumes:
       - .:/app  # Mount current directory to /app in the container
     restart: unless-stopped  # Restart policy
