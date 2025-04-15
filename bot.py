@@ -19,6 +19,7 @@ from handlers.category import (
     remove_category_handler,
     handle_remove_category_callback,
     )
+from handlers.main_currency import choose_main_currency, handle_main_currency_selection
 
 
 async def post_init(application: Application) -> None:
@@ -33,6 +34,7 @@ async def post_init(application: Application) -> None:
         BotCommand("month", "Select month"),
         BotCommand("total", "Get total spendings"),
         BotCommand("export", "Export spendings"),
+        BotCommand("main_currency", "Choose main currency"),
     ]
     await application.bot.set_my_commands(commands)
 
@@ -56,5 +58,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("remove_category", remove_category_handler))
     app.add_handler(CallbackQueryHandler(handle_remove_category_callback, pattern=r"^remove_category:"))
     app.add_handler(CommandHandler("export", export_spendings))
+    app.add_handler(CommandHandler("main_currency", choose_main_currency))
+    app.add_handler(CallbackQueryHandler(handle_main_currency_selection, pattern=r"^main_currency:"))
 
     app.run_polling()

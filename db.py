@@ -37,6 +37,12 @@ def create_tables() -> None:
                 UNIQUE(user_id, category_name) ON CONFLICT IGNORE
             );
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS main_currency (
+                user_id INTEGER PRIMARY KEY,
+                currency_code TEXT
+            );
+        """)
 
 
 def initialize_user_currencies(user_id: int) -> None:
