@@ -8,12 +8,12 @@ from db import add_category_to_user, remove_category_from_user, get_user_categor
 CATEGORY_INPUT = range(1)
 
 
-async def add_category_handler(update: Update, context: CallbackContext):
+async def add_category_handler(update: Update, _: CallbackContext):
     await update.message.reply_text("Please provide a category name to add.")
     return CATEGORY_INPUT
 
 
-async def handle_category_input(update: Update, context: CallbackContext):
+async def handle_category_input(update: Update, _: CallbackContext):
     user_id = update.effective_user.id
     category = update.message.text.strip().capitalize()
 
@@ -39,7 +39,7 @@ add_category_conversation_handler = ConversationHandler(
 )
 
 
-async def remove_category_handler(update: Update, context: CallbackContext):
+async def remove_category_handler(update: Update, _: CallbackContext):
     user_id = update.effective_user.id
     categories = get_user_categories(user_id)
 
@@ -56,7 +56,7 @@ async def remove_category_handler(update: Update, context: CallbackContext):
     await update.message.reply_text("Select a category to remove:", reply_markup=reply_markup)
 
 
-async def handle_remove_category_callback(update: Update, context: CallbackContext):
+async def handle_remove_category_callback(update: Update, _: CallbackContext):
     query = update.callback_query
     await query.answer()
 

@@ -10,11 +10,16 @@
 
 1. Start the bot on Telegram by searching for its username and clicking "Start."
 2. Use the following commands to interact with the bot:
-    - `/add`: Add a new expense.
+    - `/add_spending`: Add a new expense.
+    - `/remove_spending <id>`: Remove and expense.
     - `/list`: View your recent expenses.
-    - `/remove <expense_id>`: Delete an expense by its ID.
     - `/total`: Get a summary of your spending.
     - `/export`: Export your spending data.
+    - `/main_currency`: Set your main currency.
+    - `/add_category`: Add a new category.
+    - `/remove_category`: Remove an existing category.
+    - `/add_currency`: Add a new currency.
+    - `/remove_currency`: Remove an existing currency.
 
 ## Deployment with Docker Compose
 

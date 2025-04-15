@@ -43,6 +43,7 @@ if __name__ == "__main__":
     create_tables()
 
     app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(add_spending_conversation_handler)
     app.add_handler(CommandHandler("remove_spending", remove_spending))

@@ -47,7 +47,7 @@ async def month(update: Update, _: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📅 Select a month:", reply_markup=reply_markup)
 
 
-async def handle_month_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_month_selection(update: Update, _: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
@@ -91,7 +91,7 @@ async def handle_month_selection(update: Update, context: ContextTypes.DEFAULT_T
     await query.edit_message_text("📊 Choose a chart type:", reply_markup=reply_markup)
 
 
-async def handle_chart_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_chart_selection(update: Update, _: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 

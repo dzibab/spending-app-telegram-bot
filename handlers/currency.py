@@ -8,12 +8,12 @@ from db import add_currency_to_user, remove_currency_from_user, get_user_currenc
 CURRENCY_INPUT = range(1)
 
 
-async def add_currency_handler(update: Update, context: CallbackContext):
+async def add_currency_handler(update: Update, _: CallbackContext):
     await update.message.reply_text("Please provide a valid 3-letter currency code (e.g., USD, EUR).")
     return CURRENCY_INPUT
 
 
-async def handle_currency_input(update: Update, context: CallbackContext):
+async def handle_currency_input(update: Update, _: CallbackContext):
     user_id = update.effective_user.id
     currency = update.message.text.strip().upper()
 
@@ -39,7 +39,7 @@ add_currency_conversation_handler = ConversationHandler(
 )
 
 
-async def remove_currency_handler(update: Update, context: CallbackContext):
+async def remove_currency_handler(update: Update, _: CallbackContext):
     user_id = update.effective_user.id
     currencies = get_user_currencies(user_id)
 
@@ -56,7 +56,7 @@ async def remove_currency_handler(update: Update, context: CallbackContext):
     await update.message.reply_text("Select a currency to remove:", reply_markup=reply_markup)
 
 
-async def handle_remove_currency_callback(update: Update, context: CallbackContext):
+async def handle_remove_currency_callback(update: Update, _: CallbackContext):
     query = update.callback_query
     await query.answer()
 
