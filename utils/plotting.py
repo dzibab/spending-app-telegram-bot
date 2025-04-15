@@ -1,7 +1,8 @@
-import matplotlib.pyplot as plt
-import pandas as pd
 from datetime import datetime
 from io import BytesIO
+
+import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def plot_bar_chart(data: pd.DataFrame, main_currency: str, month: int, year: int):
@@ -42,7 +43,7 @@ def plot_pie_chart(data: pd.DataFrame, main_currency: str, month: int, year: int
 
     # Plot the pie chart
     plt.figure(figsize=(10, 8))
-    wedges, texts, autotexts = plt.pie(
+    _, texts, autotexts = plt.pie(
         data['total'],
         labels=data['category'],
         autopct=lambda p: f'{p:.1f}%\n({(p * total_spending / 100):.2f} {main_currency})',

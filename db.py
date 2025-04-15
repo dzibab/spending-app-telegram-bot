@@ -182,3 +182,29 @@ def get_user_main_currency(user_id: int) -> str:
             "SELECT currency_code FROM main_currency WHERE user_id = ?", (user_id,)
         ).fetchone()
         return row[0] if row else None
+
+
+def get_unique_month_year_combinations(user_id: int):
+    """Fetch unique month-year combinations for a user."""
+    query = """
+        SELECT DISTINCT strftime('%m', date) as month, strftime('%Y', date) as year
+        FROM spendings
+        WHERE user_id = ?
+        ORDER BY year DESC, month DESC
+    """
+    with get_connection() as conn:
+        cursor = conn.execute(query, (user_id,))
+        return cursor.fetchall()
+
+
+def get_spending_data_for_month(user_id: int, year: str, month: str):
+    """Fetch spending data for a specific month and year."""
+    query = """
+        SELECT category, SUM(amount) as total, currency
+        FROM spendings
+        WHERE user_id = ? AND strftime('%Y', date) = ? AND strftime('%m', date) = ?
+        GROUP BY category, currency
+    """
+    with get_connection() as conn:
+        cursor = conn.execute(query, (user_id, year, month))
+        return cursor.fetchall()
