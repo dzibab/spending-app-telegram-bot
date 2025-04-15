@@ -173,3 +173,12 @@ def remove_category_from_user(user_id: int, category: str) -> bool:
         except Exception as e:
             logger.error(f"Error removing category {category} for user {user_id}: {e}")
             return False
+
+
+def get_user_main_currency(user_id: int) -> str:
+    """Fetch the main currency for a user."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT currency_code FROM main_currency WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        return row[0] if row else None
