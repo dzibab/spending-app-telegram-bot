@@ -43,9 +43,11 @@ async def total(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logger.info(f"User {user_id} retrieved total spendings grouped by currency: {rows}.")
 
-    # Prepare the result to show to the user
-    total_text = "💰 Total spent grouped by currency:\n"
+    # Prepare the result to show to the user in a formatted table
+    total_text = "💰 Total spent grouped by currency:\n\n"
+    total_text += "Currency   | Total\n"
+    total_text += "---------- | ----------\n"
     for currency, total in rows:
-        total_text += f"{currency}: {total:.2f}\n"
+        total_text += f"{currency:<10} | {total:>10.2f}\n"
 
-    await update.message.reply_text(total_text)
+    await update.message.reply_text(f"```\n{total_text}\n```", parse_mode="Markdown")
