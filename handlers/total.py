@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from db import get_connection
+from db import get_total_spendings
 from utils.logging import logger
 
 
@@ -10,31 +10,13 @@ async def total_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"User {user_id} requested total spendings.")
     args = context.args
 
-    # Prepare filters for optional category or currency
+    # Prepare filters for optional category
     category = None
-    if len(args) == 1:
+    if len(args) >= 1:
         category = args[0]
-    elif len(args) == 2:
-        category, _ = args  # We ignore second argument (currency) for grouping purposes
 
-    # Prepare the SQL query for sum grouped by currency
-    query = """
-        SELECT currency, SUM(amount)
-        FROM spendings
-        WHERE user_id = ?
-    """
-    params = [user_id]
-
-    if category:
-        query += " AND category = ?"
-        params.append(category)
-
-    query += " GROUP BY currency"
-
-    # Execute the query
-    with get_connection() as conn:
-        cursor = conn.execute(query, params)
-        rows = cursor.fetchall()
+    # Get total spendings from database
+    rows = get_total_spendings(user_id, category)
 
     if not rows:
         logger.info(f"No spendings found for user {user_id} to calculate totals.")

@@ -4,28 +4,15 @@ import io
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from db import get_connection
+from db import export_all_spendings
 from utils.logging import logger
 
 
 async def export_spendings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
-    # Get the user ID
     user_id = update.message.from_user.id
     logger.info(f"User {user_id} requested to export spendings.")
 
-    # Connect to the SQLite database
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    # Query to fetch all the user's spendings
-    cursor.execute("""
-        SELECT description, amount, currency, category, date
-        FROM spendings
-        WHERE user_id = ?
-    """, (user_id,))
-
-    # Fetch all the records
-    spendings = cursor.fetchall()
+    spendings = export_all_spendings(user_id)
 
     if not spendings:
         logger.info(f"No spendings found for user {user_id} to export.")
@@ -51,6 +38,3 @@ async def export_spendings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE)
 
     # Send the file back to the user
     await update.message.reply_document(document=output, filename="spendings.csv")
-
-    # Close the database connection
-    conn.close()

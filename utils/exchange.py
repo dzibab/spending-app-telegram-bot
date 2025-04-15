@@ -38,6 +38,8 @@ def fetch_rates(from_currency: str) -> dict:
 
 
 def convert_currency(amount: float, from_currency: str, to_currency: str) -> float:
+    if from_currency == to_currency:
+        return round(amount, 4)
     rates = fetch_rates(from_currency)
     key = f"{from_currency.upper()}{to_currency.upper()}"
     rate = rates.get(key)

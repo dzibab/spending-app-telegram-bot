@@ -231,3 +231,67 @@ def get_spending_totals_by_category(user_id: int, year: str, month: str):
             GROUP BY category
             """, (user_id, year, month)
         ).fetchall()
+
+
+def add_spending(user_id: int, description: str, amount: float, currency: str, category: str, spend_date: str) -> int:
+    """Add a new spending record and return its ID."""
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO spendings (user_id, description, amount, currency, category, date) VALUES (?, ?, ?, ?, ?, ?)",
+            (user_id, description, amount, currency, category, spend_date)
+        )
+        return cursor.lastrowid
+
+
+def remove_spending(user_id: int, spending_id: int) -> bool:
+    """Remove a spending record. Returns True if successful."""
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "DELETE FROM spendings WHERE id = ? AND user_id = ?",
+            (spending_id, user_id)
+        )
+        return cursor.rowcount > 0
+
+
+def get_recent_spendings(user_id: int, limit: int = 10) -> list:
+    """Get recent spendings for a user."""
+    with get_connection() as conn:
+        cursor = conn.execute("""
+            SELECT description, amount, currency, category, date
+            FROM spendings
+            WHERE user_id = ?
+            ORDER BY date DESC, id DESC
+            LIMIT ?
+        """, (user_id, limit))
+        return cursor.fetchall()
+
+
+def get_total_spendings(user_id: int, category: str = None) -> list:
+    """Get total spendings grouped by currency, optionally filtered by category."""
+    query = """
+        SELECT currency, SUM(amount)
+        FROM spendings
+        WHERE user_id = ?
+    """
+    params = [user_id]
+
+    if category:
+        query += " AND category = ?"
+        params.append(category)
+
+    query += " GROUP BY currency"
+
+    with get_connection() as conn:
+        cursor = conn.execute(query, params)
+        return cursor.fetchall()
+
+
+def export_all_spendings(user_id: int) -> list:
+    """Export all spendings for a user."""
+    with get_connection() as conn:
+        cursor = conn.execute("""
+            SELECT description, amount, currency, category, date
+            FROM spendings
+            WHERE user_id = ?
+        """, (user_id,))
+        return cursor.fetchall()

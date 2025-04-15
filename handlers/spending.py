@@ -3,7 +3,12 @@ from datetime import datetime, date
 from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
 
-from db import get_connection, get_user_categories, get_user_currencies
+from db import (
+    get_user_categories,
+    get_user_currencies,
+    add_spending,
+    remove_spending
+)
 from utils.logging import logger
 
 
@@ -135,13 +140,7 @@ async def write_spending_to_db(update: Update, context: ContextTypes.DEFAULT_TYP
         category = context.user_data["category"]
         spend_date = context.user_data["date"]
 
-        with get_connection() as conn:
-            cursor = conn.execute(
-                "INSERT INTO spendings (user_id, description, amount, currency, category, date) VALUES (?, ?, ?, ?, ?, ?)",
-                (user_id, description, amount, currency, category, spend_date.isoformat())
-            )
-            spending_id = cursor.lastrowid  # Get the ID of the last inserted record
-
+        spending_id = add_spending(user_id, description, amount, currency, category, spend_date.isoformat())
         logger.info(f"User {user_id} added spending ID {spending_id}: {amount} {currency} for {category} on {spend_date}.")
 
         await update.message.reply_text(
@@ -186,12 +185,7 @@ async def remove_spending_handler(update: Update, context: ContextTypes.DEFAULT_
         return
 
     spending_id = int(args[0])
-    with get_connection() as conn:
-        cursor = conn.execute(
-            "DELETE FROM spendings WHERE id = ? AND user_id = ?",
-            (spending_id, user_id)
-        )
-        if cursor.rowcount == 0:
-            await update.message.reply_text("❌ Not found.")
-        else:
-            await update.message.reply_text("✅ Spending removed.")
+    if remove_spending(user_id, spending_id):
+        await update.message.reply_text("✅ Spending removed.")
+    else:
+        await update.message.reply_text("❌ Not found.")
