@@ -44,22 +44,29 @@ if __name__ == "__main__":
 
     app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(add_spending_conversation_handler)
-    app.add_handler(CommandHandler("remove_spending", remove_spending))
-    app.add_handler(CommandHandler("list", list_spendings))
-    app.add_handler(CommandHandler("month", month))
-    app.add_handler(CallbackQueryHandler(handle_month_selection, pattern=r"^month:\d{2}:\d{4}$"))
-    app.add_handler(CallbackQueryHandler(handle_chart_selection, pattern=r"^chart:(bar|pie):\d{1,2}:\d{4}$"))
-    app.add_handler(CommandHandler("total", total))
-    app.add_handler(add_currency_conversation_handler)
-    app.add_handler(CommandHandler("remove_currency", remove_currency_handler))
-    app.add_handler(CallbackQueryHandler(handle_remove_currency_callback, pattern=r"^remove_currency:"))
-    app.add_handler(add_category_conversation_handler)
-    app.add_handler(CommandHandler("remove_category", remove_category_handler))
-    app.add_handler(CallbackQueryHandler(handle_remove_category_callback, pattern=r"^remove_category:"))
-    app.add_handler(CommandHandler("export", export_spendings))
-    app.add_handler(CommandHandler("main_currency", choose_main_currency))
-    app.add_handler(CallbackQueryHandler(handle_main_currency_selection, pattern=r"^main_currency:"))
+    # Define handlers in a compact way
+    handlers = [
+        CommandHandler("start", start),
+        CommandHandler("remove_spending", remove_spending),
+        CommandHandler("list", list_spendings),
+        CommandHandler("month", month),
+        CommandHandler("total", total),
+        CommandHandler("remove_currency", remove_currency_handler),
+        CommandHandler("remove_category", remove_category_handler),
+        CommandHandler("export", export_spendings),
+        CommandHandler("main_currency", choose_main_currency),
+        CallbackQueryHandler(handle_month_selection, pattern=r"^month:\d{2}:\d{4}$"),
+        CallbackQueryHandler(handle_chart_selection, pattern=r"^chart:(bar|pie):\d{1,2}:\d{4}$"),
+        CallbackQueryHandler(handle_remove_currency_callback, pattern=r"^remove_currency:"),
+        CallbackQueryHandler(handle_remove_category_callback, pattern=r"^remove_category:"),
+        CallbackQueryHandler(handle_main_currency_selection, pattern=r"^main_currency:"),
+        add_spending_conversation_handler,
+        add_currency_conversation_handler,
+        add_category_conversation_handler,
+    ]
+
+    # Add all handlers to the application
+    for handler in handlers:
+        app.add_handler(handler)
 
     app.run_polling()
