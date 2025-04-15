@@ -130,11 +130,12 @@ def add_category_to_user(user_id: int, category: str) -> bool:
                 INSERT INTO categories (user_id, category_name)
                 VALUES (?, ?);
             """, (user_id, category))
+            logger.debug(f"Added category {category} for user {user_id}")
             return True
         except sqlite3.IntegrityError:
             return False  # Category already exists
         except Exception as e:
-            print(f"Error adding category: {e}")
+            logger.error(f"Error adding category {category} for user {user_id}: {e}")
             return False
 
 
@@ -161,7 +162,8 @@ def remove_category_from_user(user_id: int, category: str) -> bool:
                 DELETE FROM categories
                 WHERE user_id = ? AND category_name = ?;
             """, (user_id, category))
+            logger.debug(f"Removed category {category} for user {user_id}")
             return True
         except Exception as e:
-            print(f"Error removing category: {e}")
+            logger.error(f"Error removing category {category} for user {user_id}: {e}")
             return False
