@@ -213,22 +213,15 @@ def get_spending_data_for_month(user_id: int, year: str, month: str):
 def get_spending_totals_by_category(user_id: int, year: str, month: str):
     """
     Fetches the total spending grouped by category for a specific user, year, and month.
-
-    Args:
-        user_id (int): The ID of the user.
-        year (str): The year in YYYY format.
-        month (str): The month in MM format.
-
-    Returns:
-        list: A list of tuples containing category and total spending.
+    Returns category, total amount, and currency for proper conversion.
     """
     with get_connection() as conn:
         return conn.execute(
             """
-            SELECT category, SUM(amount) as total
+            SELECT category, SUM(amount) as total, currency
             FROM spendings
             WHERE user_id = ? AND strftime('%Y', date) = ? AND strftime('%m', date) = ?
-            GROUP BY category
+            GROUP BY category, currency
             """, (user_id, year, month)
         ).fetchall()
 

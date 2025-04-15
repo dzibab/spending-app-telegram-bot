@@ -39,22 +39,10 @@ async def handle_month_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
     month, year = int(month), int(year)
     logger.info(f"User {user_id} selected month: {query.data}.")
 
-    main_currency = get_user_main_currency(user_id)
-    if not main_currency:
-        await query.edit_message_text("❌ Set your main currency using /main_currency.")
-        return
-
     rows = get_spending_data_for_month(user_id, str(year), f"{month:02d}")
     if not rows:
         await query.edit_message_text("📭 No spendings found for this month.")
         return
-
-    converted_data = {}
-    for category, total, currency in rows:
-        try:
-            converted_data[category] = converted_data.get(category, 0) + convert_currency(total, currency, main_currency)
-        except Exception as e:
-            logger.error(f"Error converting {total} {currency} to {main_currency}: {e}")
 
     buttons = [[
         InlineKeyboardButton("Bar Chart", callback_data=f"chart:bar:{month}:{year}"),
@@ -73,13 +61,35 @@ async def handle_chart_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
     month, year = int(month), int(year)
     logger.info(f"User {user_id} selected chart type: {query.data}.")
 
-    rows = get_spending_totals_by_category(user_id, str(year), f"{month:02d}")
+    main_currency = get_user_main_currency(user_id)
+    if not main_currency:
+        await query.edit_message_text("❌ Set your main currency using /main_currency.")
+        return
 
+    rows = get_spending_totals_by_category(user_id, str(year), f"{month:02d}")
     if not rows:
         await query.edit_message_text("📭 No spendings found for this month.")
         return
 
-    data = pd.DataFrame(rows, columns=["category", "total"])
-    plot_buffer = generate_plot(data, get_user_main_currency(user_id), month, year, chart_type)
+    # Convert all amounts to main currency and aggregate by category
+    converted_data = {}
+    for category, total, currency in rows:
+        try:
+            converted_data[category] = converted_data.get(category, 0) + convert_currency(total, currency, main_currency)
+        except Exception as e:
+            logger.error(f"Error converting {total} {currency} to {main_currency}: {e}")
+            continue
+
+    # Create DataFrame from converted data
+    data = pd.DataFrame([
+        {"category": cat, "total": amount}
+        for cat, amount in converted_data.items()
+    ])
+
+    if data.empty:
+        await query.edit_message_text("❌ Error converting currencies. Please try again.")
+        return
+
+    plot_buffer = generate_plot(data, main_currency, month, year, chart_type)
     await query.message.reply_photo(photo=plot_buffer)
     plot_buffer.close()
