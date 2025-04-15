@@ -1,11 +1,7 @@
 import sqlite3
-import logging
 
 from constants import DEFAULT_CURRENCIES, DEFAULT_CATEGORIES
-
-# Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-
+from utils.logging import logger
 
 
 def get_connection():
@@ -93,10 +89,10 @@ def get_user_currencies(user_id: int) -> list:
             currencies = [row[0] for row in conn.execute(
                 "SELECT currency_code FROM currencies WHERE user_id = ?", (user_id,)
             ).fetchall()]
-            logging.debug(f"Fetched currencies for user {user_id}: {currencies}")
+            logger.debug(f"Fetched currencies for user {user_id}: {currencies}")
             return currencies
         except Exception as e:
-            logging.error(f"Error fetching currencies for user {user_id}: {e}")
+            logger.error(f"Error fetching currencies for user {user_id}: {e}")
             return []
 
 
@@ -116,13 +112,13 @@ def add_currency_to_user(user_id: int, currency: str) -> bool:
                 INSERT INTO currencies (user_id, currency_code)
                 VALUES (?, ?);
             """, (user_id, currency))
-            logging.debug(f"Added currency {currency} for user {user_id}")
+            logger.debug(f"Added currency {currency} for user {user_id}")
             return True
         except sqlite3.IntegrityError:
-            logging.warning(f"Currency {currency} already exists for user {user_id}")
+            logger.warning(f"Currency {currency} already exists for user {user_id}")
             return False  # Currency already exists
         except Exception as e:
-            logging.error(f"Error adding currency {currency} for user {user_id}: {e}")
+            logger.error(f"Error adding currency {currency} for user {user_id}: {e}")
             return False
 
 
@@ -150,10 +146,10 @@ def remove_currency_from_user(user_id: int, currency: str) -> bool:
                 DELETE FROM currencies
                 WHERE user_id = ? AND currency_code = ?;
             """, (user_id, currency))
-            logging.debug(f"Removed currency {currency} for user {user_id}")
+            logger.debug(f"Removed currency {currency} for user {user_id}")
             return True
         except Exception as e:
-            logging.error(f"Error removing currency {currency} for user {user_id}: {e}")
+            logger.error(f"Error removing currency {currency} for user {user_id}: {e}")
             return False
 
 

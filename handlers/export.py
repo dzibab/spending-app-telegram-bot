@@ -5,11 +5,13 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from db import get_connection
+from utils.logging import logger
 
 
 async def export_spendings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Get the user ID
     user_id = update.message.from_user.id
+    logger.info(f"User {user_id} requested to export spendings.")
 
     # Connect to the SQLite database
     conn = get_connection()
@@ -24,6 +26,14 @@ async def export_spendings(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Fetch all the records
     spendings = cursor.fetchall()
+
+    if not spendings:
+        logger.info(f"No spendings found for user {user_id} to export.")
+        await update.message.reply_text("\ud83d\udced No spendings found.")
+        return
+
+    logger.info(f"User {user_id} exported {len(spendings)} spendings.")
+    await update.message.reply_text("📥 Exporting your spendings...")
 
     # Create a CSV file in memory
     output = io.StringIO()

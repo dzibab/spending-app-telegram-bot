@@ -7,10 +7,12 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from db import get_connection
+from utils.logging import logger
 
 
 async def month(update: Update, _: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    logger.info(f"User {user_id} requested month selection.")
 
     # Query to fetch unique month-year combinations
     query = """
@@ -24,8 +26,11 @@ async def month(update: Update, _: ContextTypes.DEFAULT_TYPE):
         rows = cursor.fetchall()
 
     if not rows:
+        logger.info(f"No spendings found for user {user_id} to display months.")
         await update.message.reply_text("📭 No spendings found.")
         return
+
+    logger.info(f"User {user_id} retrieved {len(rows)} unique month-year combinations.")
 
     # Create inline keyboard buttons
     buttons = [
@@ -46,11 +51,13 @@ async def handle_month_selection(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
 
+    user_id = query.from_user.id
+    logger.info(f"User {user_id} selected a month: {query.data}.")
+
     # Parse callback data
     _, month, year = query.data.split(":")
     month = int(month)
     year = int(year)
-    user_id = query.from_user.id
 
     # Query to fetch spending data for the selected month and year
     spending_query = """
@@ -64,8 +71,11 @@ async def handle_month_selection(update: Update, context: ContextTypes.DEFAULT_T
         rows = cursor.fetchall()
 
     if not rows:
+        logger.info(f"No spendings found for user {user_id} in the selected month.")
         await query.edit_message_text("📭 No spendings found for this month.")
         return
+
+    logger.info(f"User {user_id} retrieved spending data for the selected month: {rows}.")
 
     # Prepare data for plotting
     data = pd.DataFrame(rows, columns=["category", "total"])

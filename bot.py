@@ -23,16 +23,15 @@ from handlers.category import (
 
 async def post_init(application: Application) -> None:
     commands = [
-        BotCommand("start", "Start the bot"),
         BotCommand("add_spending", "Add a spending"),
         BotCommand("remove_spending", "Remove a spending"),
         BotCommand("add_category", "Add a category"),
         BotCommand("remove_category", "Remove a category"),
+        BotCommand("add_currency", "Add a currency"),
+        BotCommand("remove_currency", "Remove a currency"),
         BotCommand("list", "List spendings"),
         BotCommand("month", "Select month"),
         BotCommand("total", "Get total spendings"),
-        BotCommand("add_currency", "Add a currency"),
-        BotCommand("remove_currency", "Remove a currency"),
         BotCommand("export", "Export spendings"),
     ]
     await application.bot.set_my_commands(commands)

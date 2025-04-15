@@ -3,12 +3,15 @@ from telegram.ext import CallbackContext, ConversationHandler, CommandHandler, M
 
 from db import add_currency_to_user, remove_currency_from_user, get_user_currencies
 
+
 # Define states for the conversation
 CURRENCY_INPUT = range(1)
+
 
 async def add_currency_handler(update: Update, context: CallbackContext):
     await update.message.reply_text("Please provide a valid 3-letter currency code (e.g., USD, EUR).")
     return CURRENCY_INPUT
+
 
 async def handle_currency_input(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
@@ -26,6 +29,7 @@ async def handle_currency_input(update: Update, context: CallbackContext):
 
     return ConversationHandler.END
 
+
 add_currency_conversation_handler = ConversationHandler(
     entry_points=[CommandHandler("add_currency", add_currency_handler)],
     states={
@@ -33,6 +37,7 @@ add_currency_conversation_handler = ConversationHandler(
     },
     fallbacks=[],
 )
+
 
 async def remove_currency_handler(update: Update, context: CallbackContext):
     user_id = update.effective_user.id

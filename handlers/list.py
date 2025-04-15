@@ -4,10 +4,12 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from db import get_connection
+from utils.logging import logger
 
 
 async def list_spendings(update: Update, _: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    logger.info(f"User {user_id} requested a list of spendings.")
 
     with get_connection() as conn:
         cursor = conn.execute("""
@@ -20,8 +22,11 @@ async def list_spendings(update: Update, _: ContextTypes.DEFAULT_TYPE):
         rows = cursor.fetchall()
 
     if not rows:
+        logger.info(f"No spendings found for user {user_id}.")
         await update.message.reply_text("📭 No spendings found.")
         return
+
+    logger.info(f"User {user_id} retrieved {len(rows)} spendings.")
 
     # Determine column widths based on the longest element in each column
     col_widths = {

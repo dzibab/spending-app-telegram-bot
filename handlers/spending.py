@@ -4,6 +4,7 @@ from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
 
 from db import get_connection, get_user_categories, get_user_currencies
+from utils.logging import logger
 
 
 # Define states for the conversation
@@ -20,6 +21,9 @@ def parse_date(value: str) -> date:
 
 
 async def start_add(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    logger.info(f"User {user_id} initiated adding a spending.")
+
     # Add a 'skip' button for the description state
     keyboard = [["Skip"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
@@ -138,6 +142,8 @@ async def write_spending_to_db(update: Update, context: ContextTypes.DEFAULT_TYP
             )
             spending_id = cursor.lastrowid  # Get the ID of the last inserted record
 
+        logger.info(f"User {user_id} added spending ID {spending_id}: {amount} {currency} for {category} on {spend_date}.")
+
         await update.message.reply_text(
             f"✅ Spending added successfully!\n"
             f"ID: {spending_id}\n"
@@ -148,6 +154,7 @@ async def write_spending_to_db(update: Update, context: ContextTypes.DEFAULT_TYP
             reply_markup=ReplyKeyboardRemove()
         )
     except Exception as e:
+        logger.error(f"Error while saving spending for user {user_id}: {e}")
         await update.message.reply_text(f"❌ Error while saving to the database: {e}")
 
 

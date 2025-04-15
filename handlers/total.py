@@ -2,10 +2,12 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from db import get_connection
+from utils.logging import logger
 
 
 async def total(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    logger.info(f"User {user_id} requested total spendings.")
     args = context.args
 
     # Prepare filters for optional category or currency
@@ -35,8 +37,11 @@ async def total(update: Update, context: ContextTypes.DEFAULT_TYPE):
         rows = cursor.fetchall()
 
     if not rows:
+        logger.info(f"No spendings found for user {user_id} to calculate totals.")
         await update.message.reply_text("📭 No spendings found.")
         return
+
+    logger.info(f"User {user_id} retrieved total spendings grouped by currency: {rows}.")
 
     # Prepare the result to show to the user
     total_text = "💰 Total spent grouped by currency:\n"
