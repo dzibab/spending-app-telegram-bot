@@ -14,6 +14,11 @@ from handlers.currency import (
     remove_currency_handler,
     handle_remove_currency_callback,
     )
+from handlers.category import (
+    add_category_conversation_handler,
+    remove_category_handler,
+    handle_remove_category_callback,
+    )
 
 
 async def post_init(application: Application) -> None:
@@ -21,6 +26,8 @@ async def post_init(application: Application) -> None:
         BotCommand("start", "Start the bot"),
         BotCommand("add_spending", "Add a spending"),
         BotCommand("remove_spending", "Remove a spending"),
+        BotCommand("add_category", "Add a category"),
+        BotCommand("remove_category", "Remove a category"),
         BotCommand("list", "List spendings"),
         BotCommand("month", "Select month"),
         BotCommand("total", "Get total spendings"),
@@ -45,6 +52,9 @@ if __name__ == "__main__":
     app.add_handler(add_currency_conversation_handler)
     app.add_handler(CommandHandler("remove_currency", remove_currency_handler))
     app.add_handler(CallbackQueryHandler(handle_remove_currency_callback, pattern=r"^remove_currency:"))
+    app.add_handler(add_category_conversation_handler)
+    app.add_handler(CommandHandler("remove_category", remove_category_handler))
+    app.add_handler(CallbackQueryHandler(handle_remove_category_callback, pattern=r"^remove_category:"))
     app.add_handler(CommandHandler("export", export_spendings))
 
     app.run_polling()
