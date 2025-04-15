@@ -4,7 +4,7 @@ from telegram.ext import ContextTypes
 from db import get_user_currencies, get_connection
 
 
-async def choose_main_currency(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def choose_main_currency_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
     # Fetch the list of currencies for the user
@@ -24,7 +24,7 @@ async def choose_main_currency(update: Update, _: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Choose your main currency:", reply_markup=reply_markup)
 
 
-async def handle_main_currency_selection(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def handle_main_currency_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 

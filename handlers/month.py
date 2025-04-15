@@ -10,7 +10,7 @@ from db import get_connection
 from utils.logging import logger
 
 
-async def month(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def month_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     logger.info(f"User {user_id} requested month selection.")
 
@@ -47,7 +47,7 @@ async def month(update: Update, _: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📅 Select a month:", reply_markup=reply_markup)
 
 
-async def handle_month_selection(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def handle_month_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
@@ -91,7 +91,7 @@ async def handle_month_selection(update: Update, _: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text("📊 Choose a chart type:", reply_markup=reply_markup)
 
 
-async def handle_chart_selection(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def handle_chart_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 

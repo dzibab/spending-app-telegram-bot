@@ -5,7 +5,7 @@ from db import get_connection
 from utils.logging import logger
 
 
-async def total(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def total_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     logger.info(f"User {user_id} requested total spendings.")
     args = context.args

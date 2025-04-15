@@ -7,7 +7,7 @@ from db import get_connection
 from utils.logging import logger
 
 
-async def list_spendings(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def list_spendings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     logger.info(f"User {user_id} requested a list of spendings.")
 

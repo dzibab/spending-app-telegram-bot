@@ -6,7 +6,7 @@ from constants import BOT_USAGE_INSTRUCTIONS
 from utils.logging import logger
 
 
-async def start(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def start_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     logger.info(f"User {user_id} started the bot.")
 

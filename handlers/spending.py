@@ -177,7 +177,7 @@ add_spending_conversation_handler = ConversationHandler(
 )
 
 
-async def remove_spending(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def remove_spending_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     args = context.args
 

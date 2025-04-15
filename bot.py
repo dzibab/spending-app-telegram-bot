@@ -3,12 +3,12 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 
 from config import BOT_TOKEN
 from db import create_tables
-from handlers.start import start
-from handlers.spending import add_spending_conversation_handler, remove_spending
-from handlers.list import list_spendings
-from handlers.total import total
-from handlers.month import month, handle_month_selection, handle_chart_selection
-from handlers.export import export_spendings
+from handlers.start import start_handler
+from handlers.spending import add_spending_conversation_handler, remove_spending_handler
+from handlers.list import list_spendings_handler
+from handlers.total import total_handler
+from handlers.month import month_handler, handle_month_callback, handle_chart_callback
+from handlers.export import export_spendings_handler
 from handlers.currency import (
     add_currency_conversation_handler,
     remove_currency_handler,
@@ -19,7 +19,7 @@ from handlers.category import (
     remove_category_handler,
     handle_remove_category_callback,
     )
-from handlers.main_currency import choose_main_currency, handle_main_currency_selection
+from handlers.main_currency import choose_main_currency_handler, handle_main_currency_callback
 
 
 async def post_init(application: Application) -> None:
@@ -46,20 +46,20 @@ if __name__ == "__main__":
 
     # Define handlers in a compact way
     handlers = [
-        CommandHandler("start", start),
-        CommandHandler("remove_spending", remove_spending),
-        CommandHandler("list", list_spendings),
-        CommandHandler("month", month),
-        CommandHandler("total", total),
+        CommandHandler("start", start_handler),
+        CommandHandler("remove_spending", remove_spending_handler),
+        CommandHandler("list", list_spendings_handler),
+        CommandHandler("month", month_handler),
+        CommandHandler("total", total_handler),
         CommandHandler("remove_currency", remove_currency_handler),
         CommandHandler("remove_category", remove_category_handler),
-        CommandHandler("export", export_spendings),
-        CommandHandler("main_currency", choose_main_currency),
-        CallbackQueryHandler(handle_month_selection, pattern=r"^month:\d{2}:\d{4}$"),
-        CallbackQueryHandler(handle_chart_selection, pattern=r"^chart:(bar|pie):\d{1,2}:\d{4}$"),
+        CommandHandler("export", export_spendings_handler),
+        CommandHandler("main_currency", choose_main_currency_handler),
+        CallbackQueryHandler(handle_month_callback, pattern=r"^month:\d{2}:\d{4}$"),
+        CallbackQueryHandler(handle_chart_callback, pattern=r"^chart:(bar|pie):\d{1,2}:\d{4}$"),
         CallbackQueryHandler(handle_remove_currency_callback, pattern=r"^remove_currency:"),
         CallbackQueryHandler(handle_remove_category_callback, pattern=r"^remove_category:"),
-        CallbackQueryHandler(handle_main_currency_selection, pattern=r"^main_currency:"),
+        CallbackQueryHandler(handle_main_currency_callback, pattern=r"^main_currency:"),
         add_spending_conversation_handler,
         add_currency_conversation_handler,
         add_category_conversation_handler,

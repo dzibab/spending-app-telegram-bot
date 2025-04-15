@@ -8,7 +8,7 @@ from db import get_connection
 from utils.logging import logger
 
 
-async def export_spendings(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def export_spendings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
     # Get the user ID
     user_id = update.message.from_user.id
     logger.info(f"User {user_id} requested to export spendings.")
