@@ -7,7 +7,7 @@ from handlers.start import start
 from handlers.spending import add_spending_conversation_handler, remove_spending
 from handlers.list import list_spendings
 from handlers.total import total
-from handlers.month import month, handle_month_selection
+from handlers.month import month, handle_month_selection, handle_chart_selection
 from handlers.export import export_spendings
 from handlers.currency import (
     add_currency_conversation_handler,
@@ -47,6 +47,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("list", list_spendings))
     app.add_handler(CommandHandler("month", month))
     app.add_handler(CallbackQueryHandler(handle_month_selection, pattern=r"^month:\d{2}:\d{4}$"))
+    app.add_handler(CallbackQueryHandler(handle_chart_selection, pattern=r"^chart:(bar|pie):\d{1,2}:\d{4}$"))
     app.add_handler(CommandHandler("total", total))
     app.add_handler(add_currency_conversation_handler)
     app.add_handler(CommandHandler("remove_currency", remove_currency_handler))
