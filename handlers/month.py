@@ -5,10 +5,10 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from db import (
-    get_connection,
     get_user_main_currency,
     get_unique_month_year_combinations,
     get_spending_data_for_month,
+    get_spending_totals_by_category,
 )
 from utils.logging import logger
 from utils.exchange import convert_currency
@@ -73,15 +73,7 @@ async def handle_chart_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
     month, year = int(month), int(year)
     logger.info(f"User {user_id} selected chart type: {query.data}.")
 
-    with get_connection() as conn:
-        rows = conn.execute(
-            """
-            SELECT category, SUM(amount) as total
-            FROM spendings
-            WHERE user_id = ? AND strftime('%Y', date) = ? AND strftime('%m', date) = ?
-            GROUP BY category
-            """, (user_id, str(year), f"{month:02d}")
-        ).fetchall()
+    rows = get_spending_totals_by_category(user_id, str(year), f"{month:02d}")
 
     if not rows:
         await query.edit_message_text("📭 No spendings found for this month.")
