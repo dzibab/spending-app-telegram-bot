@@ -1,5 +1,5 @@
 from telegram import BotCommand
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 
 from config import BOT_TOKEN
 from db import create_tables
@@ -9,8 +9,11 @@ from handlers.list import list_spendings
 from handlers.total import total
 from handlers.month import month, handle_month_selection
 from handlers.export import export_spendings
-from handlers.non_command import handle_non_command
-from handlers.currency import add_currency_handler, remove_currency_handler
+from handlers.currency import (
+    add_currency_conversation_handler,
+    remove_currency_handler,
+    handle_remove_currency_callback,
+    )
 
 
 async def post_init(application: Application) -> None:
@@ -39,9 +42,9 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("month", month))
     app.add_handler(CallbackQueryHandler(handle_month_selection, pattern=r"^month:\d{2}:\d{4}$"))
     app.add_handler(CommandHandler("total", total))
-    app.add_handler(CommandHandler("add_currency", add_currency_handler))
+    app.add_handler(add_currency_conversation_handler)
     app.add_handler(CommandHandler("remove_currency", remove_currency_handler))
+    app.add_handler(CallbackQueryHandler(handle_remove_currency_callback, pattern=r"^remove_currency:"))
     app.add_handler(CommandHandler("export", export_spendings))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_non_command))
 
     app.run_polling()

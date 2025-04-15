@@ -1,7 +1,11 @@
 import sqlite3
-
+import logging
 
 from constants import DEFAULT_CURRENCIES, DEFAULT_CATEGORIES
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 
 def get_connection():
@@ -25,14 +29,16 @@ def create_tables() -> None:
             CREATE TABLE IF NOT EXISTS currencies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
-                currency_code TEXT
+                currency_code TEXT,
+                UNIQUE(user_id, currency_code) ON CONFLICT IGNORE
             );
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS categories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
-                category_name TEXT
+                category_name TEXT,
+                UNIQUE(user_id, category_name) ON CONFLICT IGNORE
             );
         """)
 
@@ -83,9 +89,15 @@ def initialize_user_defaults(user_id: int) -> None:
 def get_user_currencies(user_id: int) -> list:
     """Fetch the list of currencies for a user."""
     with get_connection() as conn:
-        return [row[0] for row in conn.execute(
-            "SELECT currency_code FROM currencies WHERE user_id = ?", (user_id,)
-        ).fetchall()]
+        try:
+            currencies = [row[0] for row in conn.execute(
+                "SELECT currency_code FROM currencies WHERE user_id = ?", (user_id,)
+            ).fetchall()]
+            logging.debug(f"Fetched currencies for user {user_id}: {currencies}")
+            return currencies
+        except Exception as e:
+            logging.error(f"Error fetching currencies for user {user_id}: {e}")
+            return []
 
 
 def get_user_categories(user_id: int) -> list:
@@ -104,11 +116,13 @@ def add_currency_to_user(user_id: int, currency: str) -> bool:
                 INSERT INTO currencies (user_id, currency_code)
                 VALUES (?, ?);
             """, (user_id, currency))
+            logging.debug(f"Added currency {currency} for user {user_id}")
             return True
         except sqlite3.IntegrityError:
+            logging.warning(f"Currency {currency} already exists for user {user_id}")
             return False  # Currency already exists
         except Exception as e:
-            print(f"Error adding currency: {e}")
+            logging.error(f"Error adding currency {currency} for user {user_id}: {e}")
             return False
 
 
@@ -127,6 +141,7 @@ def add_category_to_user(user_id: int, category: str) -> bool:
             print(f"Error adding category: {e}")
             return False
 
+
 def remove_currency_from_user(user_id: int, currency: str) -> bool:
     """Remove a currency for a user."""
     with get_connection() as conn:
@@ -135,9 +150,10 @@ def remove_currency_from_user(user_id: int, currency: str) -> bool:
                 DELETE FROM currencies
                 WHERE user_id = ? AND currency_code = ?;
             """, (user_id, currency))
+            logging.debug(f"Removed currency {currency} for user {user_id}")
             return True
         except Exception as e:
-            print(f"Error removing currency: {e}")
+            logging.error(f"Error removing currency {currency} for user {user_id}: {e}")
             return False
 
 
