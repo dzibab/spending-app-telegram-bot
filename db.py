@@ -184,6 +184,19 @@ def get_user_main_currency(user_id: int) -> str:
         return row[0] if row else None
 
 
+def set_user_main_currency(user_id: int, currency_code: str) -> None:
+    """Set or update the main currency for a user."""
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO main_currency (user_id, currency_code)
+            VALUES (?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET currency_code = excluded.currency_code;
+            """,
+            (user_id, currency_code),
+        )
+
+
 def get_unique_month_year_combinations(user_id: int):
     """Fetch unique month-year combinations for a user."""
     query = """
