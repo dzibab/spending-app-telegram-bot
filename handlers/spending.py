@@ -136,12 +136,11 @@ async def write_spending_to_db(update: Update, context: ContextTypes.DEFAULT_TYP
         category = context.user_data["category"]
         spend_date = context.user_data["date"]
 
-        spending_id = db.add_spending(user_id, description, amount, currency, category, spend_date.isoformat())
-        logger.info(f"User {user_id} added spending ID {spending_id}: {amount} {currency} for {category} on {spend_date}.")
+        db.add_spending(user_id, description, amount, currency, category, spend_date.isoformat())
+        logger.info(f"User {user_id} added spending: {amount} {currency} for {category} on {spend_date}.")
 
         await update.message.reply_text(
             f"✅ Spending added successfully!\n"
-            f"ID: {spending_id}\n"
             f"Description: {description or 'None'}\n"
             f"Amount: {amount} {currency}\n"
             f"Category: {category}\n"

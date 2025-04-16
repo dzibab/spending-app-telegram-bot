@@ -359,22 +359,20 @@ class Database:
     def add_spending(
         self, user_id: int, description: str, amount: float,
         currency: str, category: str, spend_date: str
-    ) -> Optional[int]:
+    ) -> None:
         """Add a new spending record."""
         logger.info(f"Adding spending for user {user_id}")
         try:
             with self.get_connection() as conn:
-                cursor = conn.execute("""
+                conn.execute("""
                     INSERT INTO spendings (
                         user_id, description, amount, currency, category, date
                     ) VALUES (?, ?, ?, ?, ?, ?)
                 """, (user_id, description, amount, currency, category, spend_date))
-                spending_id = cursor.lastrowid
-                logger.info(f"Spending added with ID {spending_id}")
-                return spending_id
+                logger.info(f"Spending added successfully")
         except Exception as e:
             logger.error(f"Error adding spending: {e}")
-            return None
+            raise
 
     def remove_spending(self, user_id: int, spending_id: int) -> bool:
         """Remove a spending record."""
