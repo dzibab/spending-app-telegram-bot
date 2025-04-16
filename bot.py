@@ -6,7 +6,7 @@ from db import create_tables
 from handlers.start import start_handler
 from handlers.spending import add_spending_conversation_handler, remove_spending_handler
 from handlers.list import list_spendings_handler
-from handlers.month import month_handler, handle_month_callback, handle_chart_callback
+from handlers.report import report_handler, handle_report_callback, handle_chart_callback
 from handlers.export import export_spendings_handler
 from handlers.currency import (
     add_currency_conversation_handler,
@@ -32,7 +32,7 @@ async def post_init(application: Application) -> None:
         BotCommand("add_currency", "Add a currency"),
         BotCommand("remove_currency", "Remove a currency"),
         BotCommand("list", "List spendings"),
-        BotCommand("month", "Select month"),
+        BotCommand("report", "View spending reports"),
         BotCommand("export", "Export spendings"),
         BotCommand("main_currency", "Choose main currency"),
     ]
@@ -54,12 +54,12 @@ if __name__ == "__main__":
         CommandHandler("start", start_handler),
         CommandHandler("remove_spending", remove_spending_handler),
         CommandHandler("list", list_spendings_handler),
-        CommandHandler("month", month_handler),
+        CommandHandler("report", report_handler),
         CommandHandler("remove_currency", remove_currency_handler),
         CommandHandler("remove_category", remove_category_handler),
         CommandHandler("export", export_spendings_handler),
         CommandHandler("main_currency", choose_main_currency_handler),
-        CallbackQueryHandler(handle_month_callback, pattern=r"^month:\d{2}:\d{4}$"),
+        CallbackQueryHandler(handle_report_callback, pattern=r"^month:\d{2}:\d{4}$"),
         CallbackQueryHandler(handle_chart_callback, pattern=r"^chart:(bar|pie):\d{1,2}:\d{4}$"),
         CallbackQueryHandler(handle_remove_currency_callback, pattern=r"^remove_currency:"),
         CallbackQueryHandler(handle_remove_category_callback, pattern=r"^remove_category:"),
