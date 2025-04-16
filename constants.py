@@ -1,8 +1,7 @@
 DEFAULT_CURRENCIES = ["USD", "EUR"]
 DEFAULT_CATEGORIES = [
-    "Car", "Communication", "Eating out", "Entertainment", "Gifts", "Grocery", "Health",
-    "House", "Pets", "Shopping", "Sport", "Taxi", "Transport", "Travel",
-    ]
+    "Food", "Transport", "Housing", "Utilities", "Health", "Entertainment", "Shopping", "Travel"
+]
 BOT_USAGE_INSTRUCTIONS = (
     "Use /add_spending to record a new expense.\n"
     "Use /remove_spending to delete an expense.\n"
