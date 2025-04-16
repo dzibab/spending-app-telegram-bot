@@ -2,6 +2,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext, ConversationHandler, CommandHandler, MessageHandler, filters
 
 from db import db
+from constants import BOT_COMMANDS
 
 
 # Define states for the conversation
@@ -30,12 +31,20 @@ async def handle_category_input(update: Update, _: CallbackContext):
     return ConversationHandler.END
 
 
+async def cancel(update: Update, _: CallbackContext):
+    await update.message.reply_text("Operation canceled.")
+    return ConversationHandler.END
+
+
 add_category_conversation_handler = ConversationHandler(
     entry_points=[CommandHandler("add_category", add_category_handler)],
     states={
         CATEGORY_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_category_input)],
     },
-    fallbacks=[],
+    fallbacks=[
+        CommandHandler(cmd_info["command"], cancel)
+        for cmd_info in BOT_COMMANDS.values()
+    ],
 )
 
 

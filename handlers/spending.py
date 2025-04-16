@@ -4,6 +4,7 @@ from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
 
 from db import db
+from constants import BOT_COMMANDS
 from utils.logging import logger
 
 
@@ -167,7 +168,10 @@ add_spending_conversation_handler = ConversationHandler(
         CATEGORY: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_category)],
         DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date)],
     },
-    fallbacks=[CommandHandler("cancel", cancel)],
+    fallbacks=[
+        CommandHandler(cmd_info["command"], cancel)
+        for cmd_info in BOT_COMMANDS.values()
+    ],
 )
 
 
