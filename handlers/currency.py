@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext, ConversationHandler, CommandHandler, MessageHandler, filters
 
-from db import add_currency_to_user, remove_currency_from_user, get_user_currencies
+from db import db
 
 
 # Define states for the conversation
@@ -21,7 +21,7 @@ async def handle_currency_input(update: Update, _: CallbackContext):
         await update.message.reply_text("Invalid input. Please provide a valid 3-letter currency code (e.g., USD, EUR).")
         return CURRENCY_INPUT
 
-    success = add_currency_to_user(user_id, currency)
+    success = db.add_currency_to_user(user_id, currency)
     if success:
         await update.message.reply_text(f"Currency {currency} has been successfully added!")
     else:
@@ -41,7 +41,7 @@ add_currency_conversation_handler = ConversationHandler(
 
 async def remove_currency_handler(update: Update, _: CallbackContext):
     user_id = update.effective_user.id
-    currencies = get_user_currencies(user_id)
+    currencies = db.get_user_currencies(user_id)
 
     if not currencies:
         await update.message.reply_text("You don't have any currencies to remove.")
@@ -65,7 +65,7 @@ async def handle_remove_currency_callback(update: Update, _: CallbackContext):
 
     if data.startswith("remove_currency:"):
         currency = data.split(":")[1]
-        success = remove_currency_from_user(user_id, currency)
+        success = db.remove_currency_from_user(user_id, currency)
 
         if success:
             await query.edit_message_text(f"Currency {currency} has been successfully removed!")

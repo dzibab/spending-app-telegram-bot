@@ -3,12 +3,7 @@ from datetime import datetime, date
 from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
 
-from db import (
-    get_user_categories,
-    get_user_currencies,
-    add_spending,
-    remove_spending
-)
+from db import db
 from utils.logging import logger
 
 
@@ -56,7 +51,7 @@ async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Fetch user-specific currencies
         user_id = update.effective_user.id
-        currencies = get_user_currencies(user_id)
+        currencies = db.get_user_currencies(user_id)
 
         # Create a keyboard with currency options
         keyboard = [[c] for c in currencies]
@@ -74,7 +69,7 @@ async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    currencies = get_user_currencies(user_id)
+    currencies = db.get_user_currencies(user_id)
 
     currency = update.message.text.upper()
     if currency not in currencies:
@@ -88,7 +83,7 @@ async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["currency"] = currency
 
     # Fetch user-specific categories
-    categories = get_user_categories(user_id)
+    categories = db.get_user_categories(user_id)
 
     # Add categories as buttons
     keyboard = [[category] for category in categories]
@@ -140,7 +135,7 @@ async def write_spending_to_db(update: Update, context: ContextTypes.DEFAULT_TYP
         category = context.user_data["category"]
         spend_date = context.user_data["date"]
 
-        spending_id = add_spending(user_id, description, amount, currency, category, spend_date.isoformat())
+        spending_id = db.add_spending(user_id, description, amount, currency, category, spend_date.isoformat())
         logger.info(f"User {user_id} added spending ID {spending_id}: {amount} {currency} for {category} on {spend_date}.")
 
         await update.message.reply_text(
@@ -185,7 +180,7 @@ async def remove_spending_handler(update: Update, context: ContextTypes.DEFAULT_
         return
 
     spending_id = int(args[0])
-    if remove_spending(user_id, spending_id):
+    if db.remove_spending(user_id, spending_id):
         await update.message.reply_text("✅ Spending removed.")
     else:
         await update.message.reply_text("❌ Not found.")

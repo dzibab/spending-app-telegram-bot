@@ -4,21 +4,17 @@ import pandas as pd
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
-from db import (
-    get_user_main_currency,
-    get_unique_month_year_combinations,
-    get_spending_data_for_month,
-    get_spending_totals_by_category,
-)
+from db import db
 from utils.logging import logger
 from utils.exchange import convert_currency
 from utils.plotting import generate_plot
 
 
-async def report_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def report_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the /report command."""
     user_id = update.effective_user.id
     logger.info(f"User {user_id} requested spending report.")
-    rows = get_unique_month_year_combinations(user_id)
+    rows = db.get_unique_month_year_combinations(user_id)
 
     if not rows:
         logger.info(f"No spendings found for user {user_id}.")
@@ -26,20 +22,27 @@ async def report_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
         return
 
     buttons = [
-        [InlineKeyboardButton(f"{datetime(int(y), int(m), 1).strftime('%B %Y')}", callback_data=f"month:{m}:{y}")]
+        [InlineKeyboardButton(
+            f"{datetime(int(y), int(m), 1).strftime('%B %Y')}",
+            callback_data=f"month:{m}:{y}"
+        )]
         for m, y in rows
     ]
-    await update.message.reply_text("📅 Select a month to view the report:", reply_markup=InlineKeyboardMarkup(buttons))
+    await update.message.reply_text(
+        "📅 Select a month to view the report:",
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
 
 
-async def handle_report_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def handle_report_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle month selection for the report."""
     query = update.callback_query
     await query.answer()
     user_id, _, month, year = query.from_user.id, *query.data.split(":")
     month, year = int(month), int(year)
     logger.info(f"User {user_id} selected month: {query.data}.")
 
-    rows = get_spending_data_for_month(user_id, str(year), f"{month:02d}")
+    rows = db.get_spending_data_for_month(user_id, str(year), f"{month:02d}")
     if not rows:
         await query.edit_message_text("📭 No spendings found for this month.")
         return
@@ -54,19 +57,20 @@ async def handle_report_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def handle_chart_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def handle_chart_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle chart type selection and generate the report."""
     query = update.callback_query
     await query.answer()
     user_id, _, chart_type, month, year = query.from_user.id, *query.data.split(":")
     month, year = int(month), int(year)
     logger.info(f"User {user_id} selected chart type: {query.data}.")
 
-    main_currency = get_user_main_currency(user_id)
+    main_currency = db.get_user_main_currency(user_id)
     if not main_currency:
         await query.edit_message_text("❌ Set your main currency using /main_currency.")
         return
 
-    rows = get_spending_totals_by_category(user_id, str(year), f"{month:02d}")
+    rows = db.get_spending_totals_by_category(user_id, str(year), f"{month:02d}")
     if not rows:
         await query.edit_message_text("📭 No spendings found for this month.")
         return
@@ -75,7 +79,8 @@ async def handle_chart_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
     converted_data = {}
     for category, total, currency in rows:
         try:
-            converted_data[category] = converted_data.get(category, 0) + convert_currency(total, currency, main_currency)
+            converted_amount = convert_currency(total, currency, main_currency)
+            converted_data[category] = converted_data.get(category, 0) + converted_amount
         except Exception as e:
             logger.error(f"Error converting {total} {currency} to {main_currency}: {e}")
             continue

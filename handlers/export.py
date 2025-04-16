@@ -4,7 +4,7 @@ from io import StringIO
 from telegram import Update
 from telegram.ext import ContextTypes
 
-import db
+from db import db
 from utils.logging import logger
 
 
@@ -57,5 +57,6 @@ async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT
         try:
             output.close()
             logger.debug("Cleaned up export file resources")
-        except:
+        except Exception as e:
+            logger.error(f"Error cleaning up export file resources: {e}")
             pass

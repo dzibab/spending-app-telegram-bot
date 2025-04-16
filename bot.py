@@ -2,7 +2,7 @@ from telegram import BotCommand
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 
 from config import BOT_TOKEN
-from db import create_tables
+from db import db
 from handlers.start import start_handler
 from handlers.spending import add_spending_conversation_handler, remove_spending_handler
 from handlers.list import list_spendings_handler
@@ -23,6 +23,7 @@ from utils.logging import logger
 
 
 async def post_init(application: Application) -> None:
+    """Initialize bot commands and database."""
     logger.info("Setting up bot commands")
     commands = [
         BotCommand("add_spending", "Add a spending"),
@@ -44,7 +45,7 @@ if __name__ == "__main__":
     logger.info("Starting Spending Tracker Bot")
 
     logger.info("Initializing database")
-    create_tables()
+    db.create_tables()
 
     logger.info("Building application")
     app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()

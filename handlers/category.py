@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext, ConversationHandler, CommandHandler, MessageHandler, filters
 
-from db import add_category_to_user, remove_category_from_user, get_user_categories
+from db import db
 
 
 # Define states for the conversation
@@ -21,7 +21,7 @@ async def handle_category_input(update: Update, _: CallbackContext):
         await update.message.reply_text("Invalid input. Please provide a valid category name.")
         return CATEGORY_INPUT
 
-    success = add_category_to_user(user_id, category)
+    success = db.add_category_to_user(user_id, category)
     if success:
         await update.message.reply_text(f"Category '{category}' has been successfully added!")
     else:
@@ -41,7 +41,7 @@ add_category_conversation_handler = ConversationHandler(
 
 async def remove_category_handler(update: Update, _: CallbackContext):
     user_id = update.effective_user.id
-    categories = get_user_categories(user_id)
+    categories = db.get_user_categories(user_id)
 
     if not categories:
         await update.message.reply_text("You don't have any categories to remove.")
@@ -65,7 +65,7 @@ async def handle_remove_category_callback(update: Update, _: CallbackContext):
 
     if data.startswith("remove_category:"):
         category = data.split(":")[1]
-        success = remove_category_from_user(user_id, category)
+        success = db.remove_category_from_user(user_id, category)
 
         if success:
             await query.edit_message_text(f"Category '{category}' has been successfully removed!")
