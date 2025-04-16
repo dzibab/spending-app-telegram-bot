@@ -9,14 +9,15 @@
 ## How to Use
 
 1. Start the bot on Telegram by searching for its username and clicking "Start."
-2. Use the following commands to interact with the bot:
-    - `/add_spending`: Add a new expense.
-    - `/remove_spending <id>`: Remove and expense.
-    - `/list`: View your recent expenses.
-    - `/total`: Get a summary of your spending.
-    - `/export`: Export your spending data.
-    - `/main_currency`: Set your main currency.
-    - `/add_category`: Add a new category.
+2. Available commands:
+    - `/start`: Start the bot and initialize your account.
+    - `/add_spending`: Record a new expense.
+    - `/remove_spending <id>`: Delete an expense by its ID.
+    - `/list`: View your last 10 expenses.
+    - `/report`: View spending reports and charts.
+    - `/export`: Download your spendings as a CSV file.
+    - `/main_currency`: Set your main currency for reports.
+    - `/add_category`: Add a new spending category.
     - `/remove_category`: Remove an existing category.
     - `/add_currency`: Add a new currency.
     - `/remove_currency`: Remove an existing currency.
@@ -32,6 +33,7 @@
 2. Create a `.env` file in the project root and add the following environment variables:
     ```
     BOT_TOKEN=your_telegram_bot_token
+    EXCHANGE_API_KEY=your_exchange_api_key
     ```
 
 3. Build and start the application using Docker Compose:

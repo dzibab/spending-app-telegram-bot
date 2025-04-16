@@ -2,6 +2,7 @@ from telegram import BotCommand
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 
 from config import BOT_TOKEN
+from constants import BOT_COMMANDS
 from db import db
 from handlers.start import start_handler
 from handlers.spending import add_spending_conversation_handler, remove_spending_handler
@@ -26,16 +27,8 @@ async def post_init(application: Application) -> None:
     """Initialize bot commands and database."""
     logger.info("Setting up bot commands")
     commands = [
-        BotCommand("add_spending", "Add a spending"),
-        BotCommand("remove_spending", "Remove a spending"),
-        BotCommand("add_category", "Add a category"),
-        BotCommand("remove_category", "Remove a category"),
-        BotCommand("add_currency", "Add a currency"),
-        BotCommand("remove_currency", "Remove a currency"),
-        BotCommand("list", "List spendings"),
-        BotCommand("report", "View spending reports"),
-        BotCommand("export", "Export spendings"),
-        BotCommand("main_currency", "Choose main currency"),
+        BotCommand(cmd_info["command"], cmd_info["description"])
+        for cmd_info in BOT_COMMANDS.values()
     ]
     await application.bot.set_my_commands(commands)
     logger.info("Bot commands configured successfully")
