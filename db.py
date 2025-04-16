@@ -460,6 +460,42 @@ class Database:
             logger.error(f"Error exporting spendings: {e}")
             return []
 
+    def get_spendings_count(self, user_id: int) -> int:
+        """Get total number of spendings for a user."""
+        logger.debug(f"Fetching total spendings count for user {user_id}")
+        try:
+            with self.get_connection() as conn:
+                count = conn.execute(
+                    "SELECT COUNT(*) FROM spendings WHERE user_id = ?",
+                    (user_id,)
+                ).fetchone()[0]
+                logger.debug(f"Total spendings count: {count}")
+                return count
+        except Exception as e:
+            logger.error(f"Error fetching spendings count: {e}")
+            return 0
+
+    def get_paginated_spendings(
+        self, user_id: int, offset: int = 0, limit: int = 10
+    ) -> List[Tuple[int, str, float, str, str, str]]:
+        """Get paginated spendings for a user."""
+        logger.debug(f"Fetching paginated spendings for user {user_id}, offset {offset}, limit {limit}")
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute("""
+                    SELECT id, description, amount, currency, category, date
+                    FROM spendings
+                    WHERE user_id = ?
+                    ORDER BY date DESC, id DESC
+                    LIMIT ? OFFSET ?
+                """, (user_id, limit, offset))
+                spendings = cursor.fetchall()
+                logger.debug(f"Retrieved {len(spendings)} spendings")
+                return spendings
+        except Exception as e:
+            logger.error(f"Error fetching paginated spendings: {e}")
+            return []
+
 
 # Create global database instance
 db = Database()

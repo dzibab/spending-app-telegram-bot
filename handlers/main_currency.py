@@ -5,7 +5,7 @@ from db import db
 from utils.logging import logger
 
 
-async def choose_main_currency_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def choose_main_currency_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
     logger.info(f"User {user_id} requested to set main currency")
 
@@ -38,7 +38,7 @@ async def choose_main_currency_handler(update: Update, context: ContextTypes.DEF
         await update.message.reply_text("❌ Failed to load currencies. Please try again.")
 
 
-async def handle_main_currency_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def handle_main_currency_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
 

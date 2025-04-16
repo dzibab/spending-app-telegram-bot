@@ -6,7 +6,7 @@ from constants import BOT_COMMANDS
 from db import db
 from handlers.start import start_handler
 from handlers.spending import add_spending_conversation_handler, remove_spending_handler
-from handlers.list import list_spendings_handler
+from handlers.list import list_spendings_handler, handle_list_callback
 from handlers.report import report_handler, handle_report_callback, handle_chart_callback
 from handlers.export import export_spendings_handler
 from handlers.currency import (
@@ -58,6 +58,7 @@ if __name__ == "__main__":
         CallbackQueryHandler(handle_remove_currency_callback, pattern=r"^remove_currency:"),
         CallbackQueryHandler(handle_remove_category_callback, pattern=r"^remove_category:"),
         CallbackQueryHandler(handle_main_currency_callback, pattern=r"^main_currency:"),
+        CallbackQueryHandler(handle_list_callback, pattern=r"^list:\d+$"),
         add_spending_conversation_handler,
         add_currency_conversation_handler,
         add_category_conversation_handler,
