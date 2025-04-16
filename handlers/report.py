@@ -65,6 +65,9 @@ async def handle_chart_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) ->
     month, year = int(month), int(year)
     logger.info(f"User {user_id} selected chart type: {query.data}.")
 
+    # Let user know we're working on their chart
+    await query.edit_message_text("📊 Generating your chart, please wait...")
+
     main_currency = db.get_user_main_currency(user_id)
     if not main_currency:
         await query.edit_message_text("❌ Set your main currency using /main_currency.")
