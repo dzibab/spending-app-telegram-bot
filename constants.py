@@ -1,4 +1,4 @@
-DEFAULT_CURRENCIES = ["USD", "EUR"]
+DEFAULT_CURRENCIES = ["USD", "EUR", "CNY"]
 DEFAULT_CATEGORIES = [
     "Food", "Transport", "Housing", "Utilities", "Health", "Entertainment", "Shopping", "Travel"
 ]
