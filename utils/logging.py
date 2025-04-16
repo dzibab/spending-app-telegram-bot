@@ -20,7 +20,7 @@ console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(console_formatter)
 
 # Create file handler with DEBUG level and rotation
-log_file = f"logs/spending_bot_{datetime.now().strftime('%Y%m')}.log"
+log_file = f"logs/spending_bot_{datetime.now().strftime('%Y%m%d')}.log"
 file_handler = RotatingFileHandler(
     log_file,
     maxBytes=5*1024*1024,  # 5MB

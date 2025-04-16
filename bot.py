@@ -6,7 +6,6 @@ from db import create_tables
 from handlers.start import start_handler
 from handlers.spending import add_spending_conversation_handler, remove_spending_handler
 from handlers.list import list_spendings_handler
-from handlers.total import total_handler
 from handlers.month import month_handler, handle_month_callback, handle_chart_callback
 from handlers.export import export_spendings_handler
 from handlers.currency import (
@@ -34,7 +33,6 @@ async def post_init(application: Application) -> None:
         BotCommand("remove_currency", "Remove a currency"),
         BotCommand("list", "List spendings"),
         BotCommand("month", "Select month"),
-        BotCommand("total", "Get total spendings"),
         BotCommand("export", "Export spendings"),
         BotCommand("main_currency", "Choose main currency"),
     ]
@@ -57,7 +55,6 @@ if __name__ == "__main__":
         CommandHandler("remove_spending", remove_spending_handler),
         CommandHandler("list", list_spendings_handler),
         CommandHandler("month", month_handler),
-        CommandHandler("total", total_handler),
         CommandHandler("remove_currency", remove_currency_handler),
         CommandHandler("remove_category", remove_category_handler),
         CommandHandler("export", export_spendings_handler),

@@ -9,7 +9,6 @@ BOT_USAGE_INSTRUCTIONS = (
     "Use /list to view your last 10 expenses.\n"
     "Use /month to view spendings for a specific month.\n"
     "Use /export to download your spendings as a CSV file.\n"
-    "Use /total to view total spendings.\n"
     "Use /main_currency to set your main currency.\n"
     "Use /add_category to add a new category.\n"
     "Use /remove_category to remove an existing category.\n"
