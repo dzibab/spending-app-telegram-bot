@@ -63,11 +63,10 @@ async def handle_remove_category_callback(update: Update, _: CallbackContext):
     user_id = query.from_user.id
     data = query.data
 
-    if data.startswith("remove_category:"):
-        category = data.split(":")[1]
-        success = db.remove_category_from_user(user_id, category)
+    category = data.split(":")[1]
+    success = db.remove_category_from_user(user_id, category)
 
-        if success:
-            await query.edit_message_text(f"Category '{category}' has been successfully removed!")
-        else:
-            await query.edit_message_text("Failed to remove category. It might not exist or there was an error.")
+    if success:
+        await query.edit_message_text(f"Category '{category}' has been successfully removed!")
+    else:
+        await query.edit_message_text("Failed to remove category. It might not exist or there was an error.")

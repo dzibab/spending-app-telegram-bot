@@ -28,7 +28,7 @@ async def post_init(application: Application) -> None:
     logger.info("Setting up bot commands")
     commands = [
         BotCommand(cmd_info["command"], cmd_info["description"])
-        for cmd_info in BOT_COMMANDS.values()
+        for cmd_info in BOT_COMMANDS.values() if cmd_info["command"] != "start"  # Excluding /start
     ]
     await application.bot.set_my_commands(commands)
     logger.info("Bot commands configured successfully")
@@ -45,14 +45,14 @@ if __name__ == "__main__":
 
     # Define handlers in a compact way
     handlers = [
-        CommandHandler("start", start_handler),
-        CommandHandler("remove_spending", remove_spending_handler),
-        CommandHandler("list", list_spendings_handler),
-        CommandHandler("report", report_handler),
-        CommandHandler("remove_currency", remove_currency_handler),
-        CommandHandler("remove_category", remove_category_handler),
-        CommandHandler("export", export_spendings_handler),
-        CommandHandler("main_currency", choose_main_currency_handler),
+        CommandHandler(BOT_COMMANDS["start"]["command"], start_handler),
+        CommandHandler(BOT_COMMANDS["remove_spending"]["command"], remove_spending_handler),
+        CommandHandler(BOT_COMMANDS["list"]["command"], list_spendings_handler),
+        CommandHandler(BOT_COMMANDS["report"]["command"], report_handler),
+        CommandHandler(BOT_COMMANDS["remove_currency"]["command"], remove_currency_handler),
+        CommandHandler(BOT_COMMANDS["remove_category"]["command"], remove_category_handler),
+        CommandHandler(BOT_COMMANDS["export"]["command"], export_spendings_handler),
+        CommandHandler(BOT_COMMANDS["main_currency"]["command"], choose_main_currency_handler),
         CallbackQueryHandler(handle_report_callback, pattern=r"^month:\d{2}:\d{4}$"),
         CallbackQueryHandler(handle_chart_callback, pattern=r"^chart:(bar|pie):\d{1,2}:\d{4}$"),
         CallbackQueryHandler(handle_remove_currency_callback, pattern=r"^remove_currency:"),

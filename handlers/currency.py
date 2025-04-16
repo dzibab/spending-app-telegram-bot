@@ -63,11 +63,10 @@ async def handle_remove_currency_callback(update: Update, _: CallbackContext):
     user_id = query.from_user.id
     data = query.data
 
-    if data.startswith("remove_currency:"):
-        currency = data.split(":")[1]
-        success = db.remove_currency_from_user(user_id, currency)
+    currency = data.split(":")[1]
+    success = db.remove_currency_from_user(user_id, currency)
 
-        if success:
-            await query.edit_message_text(f"Currency {currency} has been successfully removed!")
-        else:
-            await query.edit_message_text("Failed to remove currency. It might not exist or there was an error.")
+    if success:
+        await query.edit_message_text(f"Currency {currency} has been successfully removed!")
+    else:
+        await query.edit_message_text("Failed to remove currency. It might not exist or there was an error.")
