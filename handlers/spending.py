@@ -1,6 +1,6 @@
 from datetime import datetime, date
 
-from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup
+from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
 
 from db import db
@@ -175,16 +175,81 @@ add_spending_conversation_handler = ConversationHandler(
 )
 
 
-async def remove_spending_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    args = context.args
+async def show_spendings_to_remove(update: Update, user_id: int, page: int = 0):
+    """Show a page of spendings with navigation buttons for removal."""
+    ITEMS_PER_PAGE = 10  # Show fewer items since each item will be a button
+    offset = page * ITEMS_PER_PAGE
 
-    if len(args) != 1 or not args[0].isdigit():
-        await update.message.reply_text("Usage: /remove <spending_id>")
+    # Get total count for pagination
+    total_count = db.get_spendings_count(user_id)
+    if total_count == 0:
+        logger.info(f"No spendings found for user {user_id}.")
+        if update.callback_query:
+            await update.callback_query.edit_message_text("📭 No spendings found.")
+        else:
+            await update.message.reply_text("📭 No spendings found.")
         return
 
-    spending_id = int(args[0])
-    if db.remove_spending(user_id, spending_id):
-        await update.message.reply_text("✅ Spending removed.")
+    # Get paginated data
+    rows = db.get_paginated_spendings(user_id, offset, ITEMS_PER_PAGE)
+    total_pages = (total_count - 1) // ITEMS_PER_PAGE + 1
+
+    # Create spending buttons
+    keyboard = []
+    for spending_id, desc, amount, currency, cat, dt in rows:
+        # Format the spending information
+        button_text = f"{dt} | {amount} {currency} | {cat}"
+        if desc:
+            button_text += f" | {desc[:20]}"  # Truncate long descriptions
+        keyboard.append([InlineKeyboardButton(
+            button_text,
+            callback_data=f"remove:{spending_id}"
+        )])
+
+    # Add navigation buttons
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ Previous", callback_data=f"remove_page:{page-1}"))
+    if page < total_pages - 1:
+        nav_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"remove_page:{page+1}"))
+    if nav_buttons:
+        keyboard.append(nav_buttons)
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    text = f"Select a spending to remove (Page {page + 1}/{total_pages}):"
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(text=text, reply_markup=reply_markup)
     else:
-        await update.message.reply_text("❌ Not found.")
+        await update.message.reply_text(text=text, reply_markup=reply_markup)
+
+
+async def remove_spending_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    """Handler for /remove command - shows list of spendings to remove."""
+    user_id = update.effective_user.id
+    logger.info(f"User {user_id} accessed spending removal interface")
+    await show_spendings_to_remove(update, user_id)
+
+
+async def handle_remove_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    """Handle callbacks for spending removal and pagination."""
+    query = update.callback_query
+    user_id = query.from_user.id
+    await query.answer()
+
+    # Parse callback data
+    data = query.data
+    if data.startswith("remove_page:"):
+        # Handle pagination
+        page = int(data.split(":")[1])
+        await show_spendings_to_remove(update, user_id, page)
+    elif data.startswith("remove:"):
+        # Handle spending removal
+        spending_id = int(data.split(":")[1])
+        if db.remove_spending(user_id, spending_id):
+            logger.info(f"Successfully removed spending {spending_id} for user {user_id}")
+            # Show updated list after removal
+            await show_spendings_to_remove(update, user_id, 0)
+        else:
+            logger.warning(f"Failed to remove spending {spending_id} for user {user_id}")
+            await query.edit_message_text("❌ Failed to remove spending. It might have been already removed.")
