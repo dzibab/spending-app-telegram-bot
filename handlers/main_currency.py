@@ -1,38 +1,58 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
-from db import get_user_currencies, set_user_main_currency
+import db
+from utils.logging import logger
 
 
-async def choose_main_currency_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def choose_main_currency_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
+    logger.info(f"User {user_id} requested to set main currency")
 
-    # Fetch the list of currencies for the user
-    currencies = get_user_currencies(user_id)
+    try:
+        # Get user's currencies
+        currencies = db.get_user_currencies(user_id)
+        if not currencies:
+            logger.warning(f"No currencies found for user {user_id}")
+            await update.message.reply_text(
+                "You don't have any currencies yet. Add currencies first using /add_currency"
+            )
+            return
 
-    if not currencies:
-        await update.message.reply_text("You don't have any currencies set up.")
-        return
+        logger.debug(f"Retrieved {len(currencies)} currencies for user {user_id}")
+        current_main = db.get_user_main_currency(user_id)
+        if current_main:
+            logger.debug(f"Current main currency for user {user_id}: {current_main}")
 
-    # Create inline keyboard buttons for each currency
-    buttons = [
-        [InlineKeyboardButton(currency, callback_data=f"main_currency:{currency}")]
-        for currency in currencies
-    ]
-    reply_markup = InlineKeyboardMarkup(buttons)
+        # Create currency selection keyboard
+        keyboard = []
+        for currency in currencies:
+            button_text = f"{currency} {'✓' if currency == current_main else ''}"
+            keyboard.append([InlineKeyboardButton(button_text, callback_data=f"main_currency:{currency}")])
 
-    await update.message.reply_text("Choose your main currency:", reply_markup=reply_markup)
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("Select your main currency:", reply_markup=reply_markup)
+
+    except Exception as e:
+        logger.error(f"Error while setting up main currency selection for user {user_id}: {e}")
+        await update.message.reply_text("❌ Failed to load currencies. Please try again.")
 
 
-async def handle_main_currency_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def handle_main_currency_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
 
-    # Parse the selected currency from callback data
-    _, selected_currency = query.data.split(":")
     user_id = query.from_user.id
+    currency = query.data.split(":")[1]
+    logger.info(f"User {user_id} selected main currency: {currency}")
 
-    # Save the selected currency as the user's main currency
-    set_user_main_currency(user_id, selected_currency)
+    try:
+        db.set_user_main_currency(user_id, currency)
+        logger.info(f"Successfully set main currency to {currency} for user {user_id}")
+        await query.edit_message_text(f"✅ Main currency set to {currency}")
 
-    await query.edit_message_text(f"Your main currency has been set to {selected_currency}.")
+    except Exception as e:
+        logger.error(f"Error setting main currency {currency} for user {user_id}: {e}")
+        await query.edit_message_text(
+            f"❌ Failed to set main currency to {currency}. Please try again."
+        )

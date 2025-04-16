@@ -4,8 +4,11 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from utils.logging import logger
+
 
 def plot_bar_chart(data: pd.DataFrame, main_currency: str, month: int, year: int):
+    logger.debug(f"Creating bar chart for {month}/{year} in {main_currency}")
     # Sort data by total spending in descending order
     data = data.sort_values(by='total', ascending=False)
 
@@ -38,6 +41,7 @@ def plot_bar_chart(data: pd.DataFrame, main_currency: str, month: int, year: int
 
 
 def plot_pie_chart(data: pd.DataFrame, main_currency: str, month: int, year: int):
+    logger.debug(f"Creating pie chart for {month}/{year} in {main_currency}")
     # Calculate total spending
     total_spending = data['total'].sum()
 
@@ -62,14 +66,20 @@ def plot_pie_chart(data: pd.DataFrame, main_currency: str, month: int, year: int
 
 
 def generate_plot(data: pd.DataFrame, main_currency: str, month: int, year: int, chart_type: str = "bar") -> BytesIO:
-    if chart_type == "bar":
-        plot_bar_chart(data, main_currency, month, year)
-    elif chart_type == "pie":
-        plot_pie_chart(data, main_currency, month, year)
+    logger.info(f"Generating {chart_type} chart for {month}/{year} in {main_currency}")
+    try:
+        if chart_type == "bar":
+            plot_bar_chart(data, main_currency, month, year)
+        elif chart_type == "pie":
+            plot_pie_chart(data, main_currency, month, year)
 
-    # Save the plot to a BytesIO object
-    buf = BytesIO()
-    plt.savefig(buf, format='png')
-    buf.seek(0)
-    plt.close()
-    return buf
+        # Save the plot to a BytesIO object
+        buf = BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        plt.close()
+        logger.debug("Successfully generated and saved plot")
+        return buf
+    except Exception as e:
+        logger.error(f"Error generating {chart_type} chart: {e}")
+        raise

@@ -17,19 +17,29 @@ from utils.plotting import generate_plot
 
 async def month_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    logger.info(f"User {user_id} requested month selection.")
-    rows = get_unique_month_year_combinations(user_id)
+    logger.info(f"Processing month spending request for user {user_id}")
 
-    if not rows:
-        logger.info(f"No spendings found for user {user_id}.")
-        await update.message.reply_text("📭 No spendings found.")
-        return
+    try:
+        # Get available months
+        rows = get_unique_month_year_combinations(user_id)
+        if not rows:
+            logger.info(f"No spending records found for user {user_id}")
+            await update.message.reply_text("📭 No spendings found.")
+            return
 
-    buttons = [
-        [InlineKeyboardButton(f"{datetime(int(y), int(m), 1).strftime('%B %Y')}", callback_data=f"month:{m}:{y}")]
-        for m, y in rows
-    ]
-    await update.message.reply_text("📅 Select a month:", reply_markup=InlineKeyboardMarkup(buttons))
+        logger.debug(f"Found {len(rows)} months with spending records for user {user_id}")
+
+        # Create keyboard with month buttons
+        buttons = [
+            [InlineKeyboardButton(f"{datetime(int(y), int(m), 1).strftime('%B %Y')}", callback_data=f"month:{m}:{y}")]
+            for m, y in rows
+        ]
+        reply_markup = InlineKeyboardMarkup(buttons)
+        await update.message.reply_text("📅 Select a month:", reply_markup=reply_markup)
+
+    except Exception as e:
+        logger.error(f"Error processing month request for user {user_id}: {e}")
+        await update.message.reply_text("❌ Failed to retrieve monthly data. Please try again.")
 
 
 async def handle_month_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):

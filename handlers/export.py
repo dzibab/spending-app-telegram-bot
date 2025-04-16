@@ -1,40 +1,61 @@
 import csv
-import io
+from io import StringIO
 
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from db import export_all_spendings
+import db
 from utils.logging import logger
 
 
-async def export_spendings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    logger.info(f"User {user_id} requested to export spendings.")
+async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id
+    logger.info(f"Processing export request for user {user_id}")
 
-    spendings = export_all_spendings(user_id)
+    try:
+        # Get all spendings
+        spendings = db.export_all_spendings(user_id)
+        if not spendings:
+            logger.info(f"No spendings found to export for user {user_id}")
+            await update.message.reply_text("You don't have any spendings to export.")
+            return
 
-    if not spendings:
-        logger.info(f"No spendings found for user {user_id} to export.")
-        await update.message.reply_text("\ud83d\udced No spendings found.")
-        return
+        logger.debug(f"Retrieved {len(spendings)} spendings for export")
 
-    logger.info(f"User {user_id} exported {len(spendings)} spendings.")
-    await update.message.reply_text("📥 Exporting your spendings...")
+        # Create CSV in memory
+        output = StringIO()
+        writer = csv.writer(output)
 
-    # Create a CSV file in memory
-    output = io.StringIO()
-    csv_writer = csv.writer(output)
+        # Write header
+        headers = ['Description', 'Amount', 'Currency', 'Category', 'Date']
+        writer.writerow(headers)
+        logger.debug("Created CSV file with headers")
 
-    # Write headers
-    csv_writer.writerow(['Description', 'Amount', 'Currency', 'Category', 'Date'])
+        # Write data
+        for spending in spendings:
+            writer.writerow(spending)
 
-    # Write each spending record
-    for spending in spendings:
-        csv_writer.writerow(spending)
+        # Prepare file for sending
+        output.seek(0)
+        logger.debug(f"Prepared CSV file with {len(spendings)} rows")
 
-    # Reset pointer to the beginning of the file
-    output.seek(0)
+        # Send file
+        await context.bot.send_document(
+            chat_id=update.effective_chat.id,
+            document=output.getvalue().encode(),
+            filename=f"spendings_{user_id}.csv",
+            caption="Here are your exported spendings"
+        )
+        logger.info(f"Successfully sent export file to user {user_id}")
 
-    # Send the file back to the user
-    await update.message.reply_document(document=output, filename="spendings.csv")
+    except Exception as e:
+        logger.error(f"Error exporting spendings for user {user_id}: {e}")
+        await update.message.reply_text("❌ Failed to export spendings. Please try again.")
+
+    finally:
+        # Clean up
+        try:
+            output.close()
+            logger.debug("Cleaned up export file resources")
+        except:
+            pass

@@ -20,9 +20,11 @@ from handlers.category import (
     handle_remove_category_callback,
     )
 from handlers.main_currency import choose_main_currency_handler, handle_main_currency_callback
+from utils.logging import logger
 
 
 async def post_init(application: Application) -> None:
+    logger.info("Setting up bot commands")
     commands = [
         BotCommand("add_spending", "Add a spending"),
         BotCommand("remove_spending", "Remove a spending"),
@@ -37,11 +39,16 @@ async def post_init(application: Application) -> None:
         BotCommand("main_currency", "Choose main currency"),
     ]
     await application.bot.set_my_commands(commands)
+    logger.info("Bot commands configured successfully")
 
 
 if __name__ == "__main__":
+    logger.info("Starting Spending Tracker Bot")
+
+    logger.info("Initializing database")
     create_tables()
 
+    logger.info("Building application")
     app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
 
     # Define handlers in a compact way
@@ -66,7 +73,10 @@ if __name__ == "__main__":
     ]
 
     # Add all handlers to the application
+    logger.info("Registering command handlers")
     for handler in handlers:
         app.add_handler(handler)
+    logger.info("All handlers registered successfully")
 
+    logger.info("Starting bot polling")
     app.run_polling()
