@@ -1,15 +1,32 @@
-from typing import Optional
-
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from db import db
 from utils.logging import logger
+from utils.plotting import create_pagination_buttons
+from constants import ITEMS_PER_PAGE
+
+
+def get_current_page_from_markup(reply_markup: InlineKeyboardMarkup) -> int:
+    """Extract current page number from the message markup by finding the highlighted button."""
+    if not reply_markup or not reply_markup.inline_keyboard:
+        return 0
+
+    # Get the pagination row (last row)
+    pagination_row = reply_markup.inline_keyboard[-1]
+
+    # Find the button that's highlighted with dashes (current page)
+    for button in pagination_row:
+        # Current page button text is formatted like "-N-"
+        if button.text.startswith('-') and button.text.endswith('-'):
+            # Extract the number from "-N-" format
+            return int(button.text.strip('-')) - 1  # Convert to 0-based
+
+    return 0  # Default to first page if not found
 
 
 async def show_spendings_page(update: Update, user_id: int, page: int = 0):
     """Show a page of spendings with navigation buttons."""
-    ITEMS_PER_PAGE = 5  # Fewer items since each is a button
     offset = page * ITEMS_PER_PAGE
 
     # Get total count for pagination
@@ -38,14 +55,8 @@ async def show_spendings_page(update: Update, user_id: int, page: int = 0):
             callback_data=f"list_detail:{spending_id}"
         )])
 
-    # Add navigation buttons
-    nav_buttons = []
-    if page > 0:
-        nav_buttons.append(InlineKeyboardButton("⬅️ Previous", callback_data=f"list_page:{page-1}"))
-    if page < total_pages - 1:
-        nav_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"list_page:{page+1}"))
-    if nav_buttons:
-        keyboard.append(nav_buttons)
+    # Add pagination buttons
+    keyboard.append(create_pagination_buttons(page, total_pages, "list_page"))
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     text = f"Your spendings (Page {page + 1}/{total_pages}):"
@@ -63,20 +74,26 @@ async def list_spendings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
     await show_spendings_page(update, user_id)
 
 
-async def handle_list_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
+async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle callbacks for list pagination and spending details."""
     query = update.callback_query
     user_id = query.from_user.id
     await query.answer()
 
     data = query.data
-    if data.startswith("list_page:"):
+    if data == "noop":
+        # Do nothing for ellipsis buttons
+        return
+    elif data.startswith("list_page:"):
         # Handle pagination
         page = int(data.split(":")[1])
         await show_spendings_page(update, user_id, page)
     elif data.startswith("list_detail:"):
         # Handle spending details view
         spending_id = int(data.split(":")[1])
+        # Get the current page by finding the highlighted button in pagination
+        current_page = get_current_page_from_markup(query.message.reply_markup)
+
         # Get spending details from database
         with db.get_connection() as conn:
             cursor = conn.execute("""
@@ -88,7 +105,7 @@ async def handle_list_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
         if spending:
             desc, amount, currency, category, date = spending
-            # Show detailed view with a back button
+            # Show detailed view with a back button that returns to the last viewed page
             text = (
                 f"📝 Spending Details:\n\n"
                 f"Date: {date}\n"
@@ -96,8 +113,8 @@ async def handle_list_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
                 f"Category: {category}\n"
                 f"Description: {desc or 'No description'}"
             )
-            # Add a back button to return to the list
-            keyboard = [[InlineKeyboardButton("« Back to list", callback_data="list_page:0")]]
+            # Add a back button that returns to the last viewed page
+            keyboard = [[InlineKeyboardButton("« Back to list", callback_data=f"list_page:{current_page}")]]
             await query.edit_message_text(
                 text=text,
                 reply_markup=InlineKeyboardMarkup(keyboard)

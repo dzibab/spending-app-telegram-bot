@@ -4,8 +4,9 @@ from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup, InlineKey
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
 
 from db import db
-from constants import BOT_COMMANDS
+from constants import BOT_COMMANDS, ITEMS_PER_PAGE
 from utils.logging import logger
+from utils.plotting import create_pagination_buttons
 
 
 # Define states for the conversation
@@ -174,9 +175,26 @@ add_spending_conversation_handler = ConversationHandler(
 )
 
 
+def get_current_page_from_markup(reply_markup: InlineKeyboardMarkup) -> int:
+    """Extract current page number from the message markup by finding the highlighted button."""
+    if not reply_markup or not reply_markup.inline_keyboard:
+        return 0
+
+    # Get the pagination row (last row)
+    pagination_row = reply_markup.inline_keyboard[-1]
+
+    # Find the button that's highlighted with dashes (current page)
+    for button in pagination_row:
+        # Current page button text is formatted like "-N-"
+        if button.text.startswith('-') and button.text.endswith('-'):
+            # Extract the number from "-N-" format
+            return int(button.text.strip('-')) - 1  # Convert to 0-based
+
+    return 0  # Default to first page if not found
+
+
 async def show_spendings_to_remove(update: Update, user_id: int, page: int = 0):
     """Show a page of spendings with navigation buttons for removal."""
-    ITEMS_PER_PAGE = 10  # Show fewer items since each item will be a button
     offset = page * ITEMS_PER_PAGE
 
     # Get total count for pagination
@@ -189,9 +207,16 @@ async def show_spendings_to_remove(update: Update, user_id: int, page: int = 0):
             await update.message.reply_text("📭 No spendings found.")
         return
 
+    # Calculate total pages
+    total_pages = (total_count - 1) // ITEMS_PER_PAGE + 1
+
+    # If current page is beyond total pages, adjust to last available page
+    if page >= total_pages:
+        page = max(0, total_pages - 1)
+        offset = page * ITEMS_PER_PAGE
+
     # Get paginated data
     rows = db.get_paginated_spendings(user_id, offset, ITEMS_PER_PAGE)
-    total_pages = (total_count - 1) // ITEMS_PER_PAGE + 1
 
     # Create spending buttons
     keyboard = []
@@ -205,14 +230,8 @@ async def show_spendings_to_remove(update: Update, user_id: int, page: int = 0):
             callback_data=f"remove:{spending_id}"
         )])
 
-    # Add navigation buttons
-    nav_buttons = []
-    if page > 0:
-        nav_buttons.append(InlineKeyboardButton("⬅️ Previous", callback_data=f"remove_page:{page-1}"))
-    if page < total_pages - 1:
-        nav_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"remove_page:{page+1}"))
-    if nav_buttons:
-        keyboard.append(nav_buttons)
+    # Add pagination buttons
+    keyboard.append(create_pagination_buttons(page, total_pages, "remove_page"))
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     text = f"Select a spending to remove (Page {page + 1}/{total_pages}):"
@@ -238,17 +257,33 @@ async def handle_remove_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
     # Parse callback data
     data = query.data
-    if data.startswith("remove_page:"):
+    if data == "noop":
+        # Do nothing for ellipsis buttons
+        return
+    elif data.startswith("remove_page:"):
         # Handle pagination
         page = int(data.split(":")[1])
         await show_spendings_to_remove(update, user_id, page)
     elif data.startswith("remove:"):
         # Handle spending removal
         spending_id = int(data.split(":")[1])
+        # Get the current page before removing the spending
+        current_page = get_current_page_from_markup(query.message.reply_markup)
+
         if db.remove_spending(user_id, spending_id):
             logger.info(f"Successfully removed spending {spending_id} for user {user_id}")
+
+            # Calculate if we need to move to previous page
+            total_count = db.get_spendings_count(user_id)
+            items_on_current_page = total_count - (current_page * ITEMS_PER_PAGE)
+
+            # If this was the last item on the current page and we're not on the first page,
+            # move to the previous page
+            if items_on_current_page <= 0 and current_page > 0:
+                current_page -= 1
+
             # Show updated list after removal
-            await show_spendings_to_remove(update, user_id, 0)
+            await show_spendings_to_remove(update, user_id, current_page)
         else:
             logger.warning(f"Failed to remove spending {spending_id} for user {user_id}")
             await query.edit_message_text("❌ Failed to remove spending. It might have been already removed.")

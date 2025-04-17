@@ -61,6 +61,9 @@ BOT_COMMANDS = {
     }
 }
 
+# Pagination settings
+ITEMS_PER_PAGE = 5  # Number of items to show per page in list and remove views
+
 # Generate usage instructions from commands
 BOT_USAGE_INSTRUCTIONS = "\n".join(
     f"Use /{cmd_info['command']}: {cmd_info['help']}."
