@@ -74,7 +74,7 @@ async def list_spendings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
     await show_spendings_page(update, user_id)
 
 
-async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_list_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """Handle callbacks for list pagination and spending details."""
     query = update.callback_query
     user_id = query.from_user.id
@@ -94,27 +94,23 @@ async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         # Get the current page by finding the highlighted button in pagination
         current_page = get_current_page_from_markup(query.message.reply_markup)
 
-        # Get spending details from database
-        with db.get_connection() as conn:
-            cursor = conn.execute("""
-                SELECT description, amount, currency, category, date
-                FROM spendings
-                WHERE id = ? AND user_id = ?
-            """, (spending_id, user_id))
-            spending = cursor.fetchone()
+        spending = db.get_spending_by_id(user_id, spending_id)
 
         if spending:
-            desc, amount, currency, category, date = spending
+            # desc, amount, currency, category, date = spending
             # Show detailed view with a back button that returns to the last viewed page
             text = (
                 f"📝 Spending Details:\n\n"
-                f"Date: {date}\n"
-                f"Amount: {amount} {currency}\n"
-                f"Category: {category}\n"
-                f"Description: {desc or 'No description'}"
+                f"Date: {spending.date}\n"
+                f"Amount: {spending.amount} {spending.currency}\n"
+                f"Category: {spending.category}\n"
+                f"Description: {spending.description or 'No description'}"
             )
             # Add a back button that returns to the last viewed page
-            keyboard = [[InlineKeyboardButton("« Back to list", callback_data=f"list_page:{current_page}")]]
+            keyboard = [
+                [InlineKeyboardButton("« Back to list", callback_data=f"list_page:{current_page}")],
+                # [InlineKeyboardButton("❌ Delete", callback_data=f"remove:{spending_id}")]
+                ]
             await query.edit_message_text(
                 text=text,
                 reply_markup=InlineKeyboardMarkup(keyboard)

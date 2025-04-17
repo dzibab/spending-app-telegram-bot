@@ -404,51 +404,6 @@ class Database:
             logger.error(f"Error removing spending: {e}")
             return False
 
-    def get_recent_spendings(
-        self, user_id: int, limit: int = 10
-    ) -> List[Tuple[str, float, str, str, str]]:
-        """Get recent spendings for a user."""
-        logger.debug(f"Fetching recent spendings for user {user_id}")
-        try:
-            with self.get_connection() as conn:
-                cursor = conn.execute("""
-                    SELECT description, amount, currency, category, date
-                    FROM spendings
-                    WHERE user_id = ?
-                    ORDER BY date DESC, id DESC
-                    LIMIT ?
-                """, (user_id, limit))
-                spendings = cursor.fetchall()
-                logger.debug(f"Retrieved {len(spendings)} recent spendings")
-                return spendings
-        except Exception as e:
-            logger.error(f"Error fetching recent spendings: {e}")
-            return []
-
-    def get_total_spendings(
-        self, user_id: int, category: Optional[str] = None
-    ) -> List[Tuple[str, float]]:
-        """Get total spendings grouped by currency."""
-        logger.debug(f"Fetching total spendings for user {user_id}")
-        query = "SELECT currency, SUM(amount) FROM spendings WHERE user_id = ?"
-        params = [user_id]
-
-        if category:
-            query += " AND category = ?"
-            params.append(category)
-
-        query += " GROUP BY currency"
-
-        try:
-            with self.get_connection() as conn:
-                cursor = conn.execute(query, params)
-                totals = cursor.fetchall()
-                logger.debug(f"Retrieved {len(totals)} total spendings")
-                return totals
-        except Exception as e:
-            logger.error(f"Error fetching total spendings: {e}")
-            return []
-
     def export_all_spendings(
         self, user_id: int
     ) -> List[Tuple[str, float, str, str, str]]:
@@ -583,6 +538,28 @@ class Database:
         except Exception as e:
             logger.error(f"Error counting search results: {e}")
             return 0
+
+    def get_spending_by_id(
+        self, user_id: int, spending_id: int
+    ) -> Optional[Spending]:
+        """Get details of a specific spending record."""
+        logger.debug(f"Fetching details for spending ID {spending_id} for user {user_id}")
+        try:
+            with self.get_connection() as conn:
+                row = conn.execute(
+                    "SELECT * FROM spendings WHERE id = ? AND user_id = ?",
+                    (spending_id, user_id)
+                ).fetchone()
+                if row:
+                    spending = Spending.from_row(row)
+                    logger.debug(f"Retrieved spending details: {spending}")
+                    return spending
+                else:
+                    logger.warning(f"Spending ID {spending_id} not found for user {user_id}")
+                    return None
+        except Exception as e:
+            logger.error(f"Error fetching spending details: {e}")
+            return None
 
 
 # Create global database instance
