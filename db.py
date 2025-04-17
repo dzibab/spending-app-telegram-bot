@@ -505,6 +505,85 @@ class Database:
             logger.error(f"Error fetching paginated spendings: {e}")
             return []
 
+    def search_spendings(
+        self, user_id: int, query: str = None, amount: float = None,
+        offset: int = 0, limit: int = 10
+    ) -> List[Tuple[int, str, float, str, str, str]]:
+        """Search spendings by description or amount.
+
+        Args:
+            user_id: The user ID
+            query: Text to search in description
+            amount: Exact amount to search for
+            offset: Pagination offset
+            limit: Number of items per page
+
+        Returns:
+            List of tuples containing (id, description, amount, currency, category, date)
+        """
+        logger.debug(f"Searching spendings for user {user_id}")
+        try:
+            with self.get_connection() as conn:
+                params = [user_id]
+                sql = """
+                    SELECT id, description, amount, currency, category, date
+                    FROM spendings
+                    WHERE user_id = ?
+                """
+
+                if query:
+                    sql += " AND LOWER(description) LIKE LOWER(?)"
+                    params.append(f"%{query}%")
+
+                if amount is not None:
+                    sql += " AND amount = ?"
+                    params.append(amount)
+
+                sql += " ORDER BY date DESC, id DESC LIMIT ? OFFSET ?"
+                params.extend([limit, offset])
+
+                cursor = conn.execute(sql, params)
+                results = cursor.fetchall()
+                logger.debug(f"Found {len(results)} matching spendings")
+                return results
+        except Exception as e:
+            logger.error(f"Error searching spendings: {e}")
+            return []
+
+    def count_search_results(
+        self, user_id: int, query: str = None, amount: float = None
+    ) -> int:
+        """Count total number of search results.
+
+        Args:
+            user_id: The user ID
+            query: Text to search in description
+            amount: Exact amount to search for
+
+        Returns:
+            Total number of matching spendings
+        """
+        logger.debug(f"Counting search results for user {user_id}")
+        try:
+            with self.get_connection() as conn:
+                params = [user_id]
+                sql = "SELECT COUNT(*) FROM spendings WHERE user_id = ?"
+
+                if query:
+                    sql += " AND LOWER(description) LIKE LOWER(?)"
+                    params.append(f"%{query}%")
+
+                if amount is not None:
+                    sql += " AND amount = ?"
+                    params.append(amount)
+
+                count = conn.execute(sql, params).fetchone()[0]
+                logger.debug(f"Found {count} total matching spendings")
+                return count
+        except Exception as e:
+            logger.error(f"Error counting search results: {e}")
+            return 0
+
 
 # Create global database instance
 db = Database()

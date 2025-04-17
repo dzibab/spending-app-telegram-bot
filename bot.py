@@ -24,6 +24,7 @@ from handlers.category import (
     handle_remove_category_callback,
     )
 from handlers.main_currency import choose_main_currency_handler, handle_main_currency_callback
+from handlers.search import search_conversation_handler, handle_search_callback
 from utils.logging import logger
 
 
@@ -64,9 +65,11 @@ if __name__ == "__main__":
         CallbackQueryHandler(handle_main_currency_callback, pattern=r"^main_currency:"),
         CallbackQueryHandler(handle_list_callback, pattern=r"^list_(page|detail):\d+$"),
         CallbackQueryHandler(handle_remove_callback, pattern=r"^remove(_page)?:\d+$"),
+        CallbackQueryHandler(handle_search_callback, pattern=r"^search_(page|detail|back)"),
         add_spending_conversation_handler,
         add_currency_conversation_handler,
         add_category_conversation_handler,
+        search_conversation_handler,
     ]
 
     # Add all handlers to the application

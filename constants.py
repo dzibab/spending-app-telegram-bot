@@ -19,6 +19,11 @@ BOT_COMMANDS = {
         "description": "Remove a spending",
         "help": "Delete an expense by its ID"
     },
+    "search_spending": {
+        "command": "search",
+        "description": "Search spendings",
+        "help": "Search spendings by amount or description"
+    },
     "add_category": {
         "command": "add_category",
         "description": "Add a category",
