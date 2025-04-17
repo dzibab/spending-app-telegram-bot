@@ -297,6 +297,17 @@ class Database:
             logger.error(f"Error setting main currency {currency_code} for user {user_id}: {e}")
             raise
 
+    def remove_user_main_currency(self, user_id: int) -> None:
+        """Remove main currency for a user."""
+        logger.info(f"Removing main currency for user {user_id}")
+        try:
+            with self.get_connection() as conn:
+                conn.execute("DELETE FROM main_currency WHERE user_id = ?", (user_id,))
+                logger.info(f"Main currency removed for user {user_id}")
+        except Exception as e:
+            logger.error(f"Error removing main currency for user {user_id}: {e}")
+            raise
+
     def get_unique_month_year_combinations(self, user_id: int) -> List[Tuple[str, str]]:
         """Get unique month-year combinations for a user's spendings."""
         logger.debug(f"Fetching unique month-year combinations for user {user_id}")
