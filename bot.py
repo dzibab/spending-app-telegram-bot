@@ -21,6 +21,8 @@ from handlers.category import (
 from handlers.currency import (
     add_currency_conversation_handler,
     handle_remove_currency_callback,
+    handle_confirm_remove_currency,
+    handle_cancel_remove_currency,
     remove_currency_handler,
 )
 from handlers.export_csv import export_spendings_handler, handle_export_callback
@@ -138,6 +140,8 @@ if __name__ == "__main__":
         CallbackQueryHandler(handle_report_callback, pattern=r"^month:\d{2}:\d{4}$"),
         CallbackQueryHandler(handle_chart_callback, pattern=r"^chart:(bar|pie):\d{1,2}:\d{4}$"),
         CallbackQueryHandler(handle_remove_currency_callback, pattern=r"^remove_currency:"),
+        CallbackQueryHandler(handle_confirm_remove_currency, pattern=r"^confirm_remove_currency:"),
+        CallbackQueryHandler(handle_cancel_remove_currency, pattern=r"^cancel_remove_currency$"),
         CallbackQueryHandler(handle_remove_category_callback, pattern=r"^remove_category:"),
         CallbackQueryHandler(handle_main_currency_callback, pattern=r"^main_currency:"),
         CallbackQueryHandler(handle_list_callback, pattern=r"^list_(page|detail|delete):\d+"),

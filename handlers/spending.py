@@ -7,6 +7,13 @@ from constants import BOT_COMMANDS
 from db import db
 from handlers.common import cancel, create_keyboard_markup, handle_db_error, log_user_action
 from utils.date_utils import parse_date_to_datetime
+from utils.validation import (
+    validate_amount,
+    validate_currency_code,
+    validate_category,
+    validate_date,
+    validate_description,
+)
 
 # Define states for the conversation
 DESCRIPTION, AMOUNT, CURRENCY, CATEGORY, DATE = range(5)
@@ -28,6 +35,12 @@ async def start_add(update: Update, _: ContextTypes.DEFAULT_TYPE):
 async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
     description = update.message.text
     if description.lower() != "no description":
+        # Validate description
+        is_valid, error_message = validate_description(description)
+        if not is_valid:
+            await update.message.reply_text(f"❌ {error_message}\nPlease provide a valid description:")
+            return DESCRIPTION
+
         context.user_data["description"] = description
     else:
         context.user_data["description"] = ""
@@ -36,35 +49,58 @@ async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        amount = float(update.message.text)
-        context.user_data["amount"] = amount
+    amount_str = update.message.text
+    # Use validation utility
+    is_valid, result = validate_amount(amount_str)
 
-        # Fetch user-specific currencies
-        user_id = update.effective_user.id
-        currencies = await db.get_user_currencies(user_id)
-
-        # Create a keyboard with currency options
-        keyboard = create_keyboard_markup(currencies)
-        await update.message.reply_text("Enter the currency:", reply_markup=keyboard)
-        return CURRENCY
-    except ValueError:
-        await update.message.reply_text("❌ Invalid amount. Please enter a valid number:")
+    if not is_valid:
+        await update.message.reply_text(f"❌ {result}\nPlease enter a valid amount:")
         return AMOUNT
+
+    # Store valid amount
+    amount = result
+    context.user_data["amount"] = amount
+
+    # Fetch user-specific currencies
+    user_id = update.effective_user.id
+    currencies = await db.get_user_currencies(user_id)
+
+    # Create a keyboard with currency options
+    keyboard = create_keyboard_markup(currencies)
+
+    # Get main currency to show it first
+    main_currency = await db.get_user_main_currency(user_id)
+    hint = f" (your main currency is {main_currency})" if main_currency else ""
+
+    await update.message.reply_text(f"Enter the currency{hint}:", reply_markup=keyboard)
+    return CURRENCY
 
 
 async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     currencies = await db.get_user_currencies(user_id)
 
-    currency = update.message.text.upper()
-    if currency not in currencies:
+    # Validate currency code format first
+    currency = update.message.text.upper().strip()
+    is_valid, error_message = validate_currency_code(currency)
+
+    if not is_valid:
         keyboard = create_keyboard_markup(currencies)
         await update.message.reply_text(
-            "❌ Invalid currency code. Please select a valid currency from the options below:",
+            f"❌ {error_message}\nPlease select a valid currency from the options below:",
             reply_markup=keyboard,
         )
         return CURRENCY
+
+    # Then validate that the user has this currency
+    if currency not in currencies:
+        keyboard = create_keyboard_markup(currencies)
+        await update.message.reply_text(
+            f"❌ Currency '{currency}' is not in your list of currencies.\nPlease select a valid currency from the options below:",
+            reply_markup=keyboard,
+        )
+        return CURRENCY
+
     context.user_data["currency"] = currency
 
     # Fetch user-specific categories
@@ -77,7 +113,30 @@ async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
     category = update.message.text
+
+    # Validate category name
+    is_valid, error_message = validate_category(category)
+    if not is_valid:
+        categories = await db.get_user_categories(user_id)
+        keyboard = create_keyboard_markup(categories)
+        await update.message.reply_text(
+            f"❌ {error_message}\nPlease enter a valid category:",
+            reply_markup=keyboard,
+        )
+        return CATEGORY
+
+    # Validate that the user has this category
+    categories = await db.get_user_categories(user_id)
+    if category not in categories:
+        keyboard = create_keyboard_markup(categories)
+        await update.message.reply_text(
+            f"❌ Category '{category}' is not in your list of categories.\nPlease select a valid category from the options below:",
+            reply_markup=keyboard,
+        )
+        return CATEGORY
+
     context.user_data["category"] = category
 
     # Add a 'today' button for the date state
@@ -91,23 +150,25 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     date_input = update.message.text
-    try:
-        if date_input.lower() == "today":
-            spend_date = date.today()
-        else:
-            # Use the parse_date_to_datetime function which returns a datetime object
-            spend_date = parse_date_to_datetime(date_input).date()
-        context.user_data["date"] = spend_date
 
-        # Proceed to save the spending to the database
-        await write_spending_to_db(update, context)
-        return ConversationHandler.END
-    except ValueError as ve:
-        await update.message.reply_text(f"❌ {ve}\nPlease enter the date again:")
+    # Use validation utility
+    is_valid, result = validate_date(date_input)
+
+    if not is_valid:
+        keyboard = create_keyboard_markup(["Today"])
+        await update.message.reply_text(
+            f"❌ {result}\nPlease enter the date again or press 'Today' for today's date:",
+            reply_markup=keyboard,
+        )
         return DATE
-    except Exception as e:
-        await update.message.reply_text(f"❌ Error: {e}")
-        return ConversationHandler.END
+
+    # Store the validated date
+    spend_date = result.date()
+    context.user_data["date"] = spend_date
+
+    # Proceed to save the spending to the database
+    await write_spending_to_db(update, context)
+    return ConversationHandler.END
 
 
 async def write_spending_to_db(update: Update, context: ContextTypes.DEFAULT_TYPE):
