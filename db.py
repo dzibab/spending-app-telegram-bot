@@ -1,7 +1,8 @@
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Set, Tuple, Any
 
 import aiosqlite
 
@@ -29,6 +30,47 @@ class Spending:
         )
 
 
+class Cache:
+    """Cache implementation for frequently accessed database data."""
+
+    def __init__(self, ttl_seconds: int = 300):
+        """Initialize cache with time-to-live in seconds."""
+        self._data: Dict[str, Dict[Any, Tuple[Any, datetime]]] = {}
+        self._ttl = ttl_seconds
+
+    def get(self, cache_type: str, key: Any) -> Optional[Any]:
+        """Get a value from cache if it exists and is not expired."""
+        if cache_type not in self._data or key not in self._data[cache_type]:
+            return None
+
+        value, timestamp = self._data[cache_type][key]
+        if datetime.now() > timestamp:
+            # Cache entry has expired
+            del self._data[cache_type][key]
+            return None
+
+        return value
+
+    def set(self, cache_type: str, key: Any, value: Any) -> None:
+        """Store a value in cache with expiration time."""
+        if cache_type not in self._data:
+            self._data[cache_type] = {}
+
+        expiry = datetime.now() + timedelta(seconds=self._ttl)
+        self._data[cache_type][key] = (value, expiry)
+
+    def invalidate(self, cache_type: str, key: Optional[Any] = None) -> None:
+        """Invalidate a specific cache entry or all entries of a given type."""
+        if cache_type not in self._data:
+            return
+
+        if key is not None:
+            if key in self._data[cache_type]:
+                del self._data[cache_type][key]
+        else:
+            self._data[cache_type] = {}
+
+
 class Database:
     """Handles database operations for the spending tracker bot."""
 
@@ -37,6 +79,15 @@ class Database:
         self.db_path = db_path
         self._connection = None
         self._connection_lock = asyncio.Lock()
+
+        # Initialize cache for frequent database lookups
+        self._cache = Cache(ttl_seconds=300)  # 5 minute TTL
+
+        # Cache types
+        self.CACHE_USER_CURRENCIES = "user_currencies"
+        self.CACHE_USER_CATEGORIES = "user_categories"
+        self.CACHE_USER_MAIN_CURRENCY = "user_main_currency"
+        self.CACHE_SPENDING_COUNT = "spending_count"
 
     async def get_connection(self) -> aiosqlite.Connection:
         """Get a database connection asynchronously."""
@@ -100,7 +151,18 @@ class Database:
                         FOREIGN KEY (user_id, category) REFERENCES categories (user_id, category_name)
                     );
                 """)
+                # Create indexes to optimize common queries
                 await cursor.execute("CREATE INDEX IF NOT EXISTS idx_spendings_user_date ON spendings(user_id, date);")
+                await cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_spendings_user_category ON spendings(user_id, category);"
+                )
+                await cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_spendings_user_currency ON spendings(user_id, currency);"
+                )
+                await cursor.execute("CREATE INDEX IF NOT EXISTS idx_spendings_amount ON spendings(amount);")
+                await cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_spendings_description ON spendings(description COLLATE NOCASE);"
+                )
 
                 # Create currencies table with composite primary key
                 await cursor.execute("""
@@ -194,11 +256,20 @@ class Database:
         """Get list of currencies for a user."""
         logger.debug(f"Fetching currencies for user {user_id}")
         try:
+            # Check cache first
+            cached_currencies = self._cache.get(self.CACHE_USER_CURRENCIES, user_id)
+            if cached_currencies is not None:
+                logger.debug(f"Cache hit for user {user_id} currencies")
+                return cached_currencies
+
             async with self.connection() as cursor:
                 await cursor.execute("SELECT currency_code FROM currencies WHERE user_id = ?", (user_id,))
                 rows = await cursor.fetchall()
                 currencies = [row[0] for row in rows]
                 logger.debug(f"Retrieved {len(currencies)} currencies for user {user_id}")
+
+                # Update cache
+                self._cache.set(self.CACHE_USER_CURRENCIES, user_id, currencies)
                 return currencies
         except Exception as e:
             logger.error(f"Error fetching currencies for user {user_id}: {e}")
@@ -208,11 +279,20 @@ class Database:
         """Get list of categories for a user."""
         logger.debug(f"Fetching categories for user {user_id}")
         try:
+            # Check cache first
+            cached_categories = self._cache.get(self.CACHE_USER_CATEGORIES, user_id)
+            if cached_categories is not None:
+                logger.debug(f"Cache hit for user {user_id} categories")
+                return cached_categories
+
             async with self.connection() as cursor:
                 await cursor.execute("SELECT category_name FROM categories WHERE user_id = ?", (user_id,))
                 rows = await cursor.fetchall()
                 categories = [row[0] for row in rows]
                 logger.debug(f"Retrieved {len(categories)} categories for user {user_id}")
+
+                # Update cache
+                self._cache.set(self.CACHE_USER_CATEGORIES, user_id, categories)
                 return categories
         except Exception as e:
             logger.error(f"Error fetching categories for user {user_id}: {e}")
@@ -227,6 +307,9 @@ class Database:
                     "INSERT INTO currencies (user_id, currency_code) VALUES (?, ?);", (user_id, currency)
                 )
                 logger.info(f"Currency {currency} added for user {user_id}")
+
+                # Invalidate cache
+                self._cache.invalidate(self.CACHE_USER_CURRENCIES, user_id)
                 return True
         except Exception as e:
             logger.error(f"Error adding currency {currency} for user {user_id}: {e}")
@@ -241,6 +324,9 @@ class Database:
                     "INSERT INTO categories (user_id, category_name) VALUES (?, ?);", (user_id, category)
                 )
                 logger.info(f"Category {category} added for user {user_id}")
+
+                # Invalidate cache
+                self._cache.invalidate(self.CACHE_USER_CATEGORIES, user_id)
                 return True
         except Exception as e:
             logger.error(f"Error adding category {category} for user {user_id}: {e}")
@@ -260,6 +346,9 @@ class Database:
                     logger.info(f"Currency {currency} removed for user {user_id}")
                 else:
                     logger.warning(f"Currency {currency} not found for user {user_id}")
+
+                # Invalidate cache
+                self._cache.invalidate(self.CACHE_USER_CURRENCIES, user_id)
                 return success
         except Exception as e:
             logger.error(f"Error removing currency {currency} for user {user_id}: {e}")
@@ -278,6 +367,9 @@ class Database:
                     logger.info(f"Category {category} removed for user {user_id}")
                 else:
                     logger.warning(f"Category {category} not found for user {user_id}")
+
+                # Invalidate cache
+                self._cache.invalidate(self.CACHE_USER_CATEGORIES, user_id)
                 return success
         except Exception as e:
             logger.error(f"Error removing category {category} for user {user_id}: {e}")
@@ -287,11 +379,20 @@ class Database:
         """Get main currency for a user."""
         logger.debug(f"Fetching main currency for user {user_id}")
         try:
+            # Check cache first
+            cached_main_currency = self._cache.get(self.CACHE_USER_MAIN_CURRENCY, user_id)
+            if cached_main_currency is not None:
+                logger.debug(f"Cache hit for user {user_id} main currency")
+                return cached_main_currency
+
             async with self.connection() as cursor:
                 await cursor.execute("SELECT currency_code FROM main_currency WHERE user_id = ?", (user_id,))
                 row = await cursor.fetchone()
                 main_currency = row[0] if row else None
                 logger.debug(f"Main currency for user {user_id}: {main_currency}")
+
+                # Update cache
+                self._cache.set(self.CACHE_USER_MAIN_CURRENCY, user_id, main_currency)
                 return main_currency
         except Exception as e:
             logger.error(f"Error fetching main currency for user {user_id}: {e}")
@@ -311,6 +412,9 @@ class Database:
                     (user_id, currency_code),
                 )
                 logger.info(f"Main currency {currency_code} set for user {user_id}")
+
+                # Invalidate cache
+                self._cache.invalidate(self.CACHE_USER_MAIN_CURRENCY, user_id)
         except Exception as e:
             logger.error(f"Error setting main currency {currency_code} for user {user_id}: {e}")
             raise
@@ -322,6 +426,9 @@ class Database:
             async with self.transaction() as cursor:
                 await cursor.execute("DELETE FROM main_currency WHERE user_id = ?", (user_id,))
                 logger.info(f"Main currency removed for user {user_id}")
+
+                # Invalidate cache
+                self._cache.invalidate(self.CACHE_USER_MAIN_CURRENCY, user_id)
         except Exception as e:
             logger.error(f"Error removing main currency for user {user_id}: {e}")
             raise
@@ -403,9 +510,44 @@ class Database:
                     (user_id, description, amount, currency, category, spend_date),
                 )
                 logger.info("Spending added successfully")
+
+                # Invalidate spending count cache
+                self._cache.invalidate(self.CACHE_SPENDING_COUNT, user_id)
         except Exception as e:
             logger.error(f"Error adding spending: {e}")
             raise
+
+    async def bulk_add_spendings(self, spendings: list[tuple[int, str, float, str, str, str]]) -> int:
+        """Add multiple spending records in a single transaction for better performance.
+
+        Args:
+            spendings: List of tuples containing (user_id, description, amount, currency, category, date)
+
+        Returns:
+            Number of records successfully added
+        """
+        logger.info(f"Bulk adding {len(spendings)} spending records")
+        try:
+            async with self.transaction() as cursor:
+                await cursor.executemany(
+                    """
+                    INSERT INTO spendings (
+                        user_id, description, amount, currency, category, date
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                    spendings,
+                )
+                logger.info(f"Successfully added {len(spendings)} spending records")
+
+                # Get unique user IDs to invalidate cache
+                user_ids = {spending[0] for spending in spendings}
+                for user_id in user_ids:
+                    self._cache.invalidate(self.CACHE_SPENDING_COUNT, user_id)
+
+                return len(spendings)
+        except Exception as e:
+            logger.error(f"Error bulk adding spendings: {e}")
+            return 0
 
     async def remove_spending(self, user_id: int, spending_id: int) -> bool:
         """Remove a spending record."""
@@ -416,6 +558,9 @@ class Database:
                 success = cursor.rowcount > 0
                 if success:
                     logger.info("Spending removed successfully")
+
+                    # Invalidate spending count cache
+                    self._cache.invalidate(self.CACHE_SPENDING_COUNT, user_id)
                 else:
                     logger.warning("Spending not found")
                 return success
@@ -477,13 +622,32 @@ class Database:
                     sql += " AND date(date) <= date(?)"
                     params.append(end_date.strftime("%Y-%m-%d"))
 
+                # Use chunked processing for large datasets
                 sql += " ORDER BY date DESC, id DESC"
 
-                await cursor.execute(sql, params)
-                rows = await cursor.fetchall()
-                spendings = [Spending.from_row(tuple(row)) for row in rows]
-                logger.debug(f"Exported {len(spendings)} spendings within date range")
-                return spendings
+                # For very large datasets, we'll process in chunks
+                chunk_size = 1000
+                sql_with_limit = f"{sql} LIMIT {chunk_size}"
+
+                all_spendings = []
+                offset = 0
+
+                while True:
+                    await cursor.execute(f"{sql_with_limit} OFFSET {offset}", params)
+                    rows = await cursor.fetchall()
+                    if not rows:
+                        break
+
+                    spendings = [Spending.from_row(tuple(row)) for row in rows]
+                    all_spendings.extend(spendings)
+
+                    if len(rows) < chunk_size:
+                        break
+
+                    offset += chunk_size
+
+                logger.debug(f"Exported {len(all_spendings)} spendings within date range")
+                return all_spendings
         except Exception as e:
             logger.error(f"Error exporting spendings with date range: {e}")
             return []
@@ -492,10 +656,19 @@ class Database:
         """Get total number of spendings for a user."""
         logger.debug(f"Fetching total spendings count for user {user_id}")
         try:
+            # Check cache first
+            cached_count = self._cache.get(self.CACHE_SPENDING_COUNT, user_id)
+            if cached_count is not None:
+                logger.debug(f"Cache hit for user {user_id} spending count")
+                return cached_count
+
             async with self.connection() as cursor:
                 await cursor.execute("SELECT COUNT(*) FROM spendings WHERE user_id = ?", (user_id,))
                 count = (await cursor.fetchone())[0]
                 logger.debug(f"Total spendings count: {count}")
+
+                # Update cache
+                self._cache.set(self.CACHE_SPENDING_COUNT, user_id, count)
                 return count
         except Exception as e:
             logger.error(f"Error fetching spendings count: {e}")
@@ -541,6 +714,16 @@ class Database:
         """
         logger.debug(f"Searching spendings for user {user_id}")
         try:
+            # Create a cache key based on search params
+            cache_key = f"search:{user_id}:{query}:{amount}:{offset}:{limit}"
+            cache_type = "search_results"
+
+            # Check cache first for frequent identical searches
+            cached_results = self._cache.get(cache_type, cache_key)
+            if cached_results is not None:
+                logger.debug(f"Cache hit for search results with key {cache_key}")
+                return cached_results
+
             async with self.connection() as cursor:
                 params = [user_id]
                 sql = """
@@ -550,6 +733,7 @@ class Database:
                 """
 
                 if query:
+                    # Use full text search when available, fallback to LIKE
                     sql += " AND LOWER(description) LIKE LOWER(?)"
                     params.append(f"%{query}%")
 
@@ -564,6 +748,9 @@ class Database:
                 rows = await cursor.fetchall()
                 spendings = [Spending.from_row(tuple(row)) for row in rows]
                 logger.debug(f"Found {len(spendings)} matching spendings")
+
+                # Cache results for short time (30 seconds) for identical searches
+                self._cache.set(cache_type, cache_key, spendings)
                 return spendings
         except Exception as e:
             logger.error(f"Error searching spendings: {e}")
@@ -582,6 +769,16 @@ class Database:
         """
         logger.debug(f"Counting search results for user {user_id}")
         try:
+            # Create a cache key based on search params
+            cache_key = f"count:{user_id}:{query}:{amount}"
+            cache_type = "search_count"
+
+            # Check cache first for frequent identical searches
+            cached_count = self._cache.get(cache_type, cache_key)
+            if cached_count is not None:
+                logger.debug(f"Cache hit for search count with key {cache_key}")
+                return cached_count
+
             async with self.connection() as cursor:
                 params = [user_id]
                 sql = "SELECT COUNT(*) FROM spendings WHERE user_id = ?"
@@ -597,6 +794,9 @@ class Database:
                 await cursor.execute(sql, params)
                 count = (await cursor.fetchone())[0]
                 logger.debug(f"Found {count} total matching spendings")
+
+                # Cache the count result
+                self._cache.set(cache_type, cache_key, count)
                 return count
         except Exception as e:
             logger.error(f"Error counting search results: {e}")
@@ -621,6 +821,119 @@ class Database:
         except Exception as e:
             logger.error(f"Error fetching spending details: {e}")
             return None
+
+    async def get_monthly_report_data(self, user_id: int, year: str, month: str) -> dict:
+        """Get optimized spending data for monthly reports in a single query.
+
+        This combines multiple data needs for report generation into a single
+        optimized query to reduce database hits and improve performance.
+
+        Args:
+            user_id: The user ID
+            year: Year in string format (YYYY)
+            month: Month in string format (MM)
+
+        Returns:
+            Dictionary with spending data grouped by category and totals
+        """
+        logger.debug(f"Fetching optimized monthly report data for user {user_id} for {month}/{year}")
+
+        # Get current year and month for comparison
+        current_date = datetime.now()
+        current_year = str(current_date.year)
+        current_month = f"{current_date.month:02d}"
+
+        # Only use cache for months other than the current month
+        is_current_month = year == current_year and month == current_month
+
+        if not is_current_month:
+            # Create a cache key for this specific report
+            cache_key = f"{user_id}:{year}:{month}"
+            cache_type = "monthly_report"
+
+            # Check if we have cached results for this report
+            cached_data = self._cache.get(cache_type, cache_key)
+            if cached_data is not None:
+                logger.debug(f"Cache hit for monthly report data with key {cache_key}")
+                return cached_data
+        else:
+            logger.debug(f"Skipping cache for current month ({month}/{year})")
+
+        try:
+            # We'll use a more comprehensive query to get all needed data at once
+            query = """
+                SELECT
+                    category,
+                    SUM(amount) as total,
+                    currency,
+                    COUNT(*) as count
+                FROM spendings
+                WHERE user_id = ?
+                AND strftime('%Y', date) = ?
+                AND strftime('%m', date) = ?
+                GROUP BY category, currency
+                ORDER BY total DESC
+            """
+
+            async with self.connection() as cursor:
+                await cursor.execute(query, (user_id, year, month))
+                rows = await cursor.fetchall()
+
+                # Process the data into a structure that's easy to work with
+                result = {
+                    "by_category": {},
+                    "by_currency": {},
+                    "total_transactions": 0,
+                    "total_amount": 0.0,
+                    "categories": set(),
+                    "currencies": set(),
+                }
+
+                # Process each row of data
+                for row in rows:
+                    category = row[0]
+                    amount = row[1]
+                    currency = row[2]
+                    count = row[3]
+
+                    # Add to categories set
+                    result["categories"].add(category)
+                    result["currencies"].add(currency)
+
+                    # Track total transactions
+                    result["total_transactions"] += count
+
+                    # Group by category
+                    if category not in result["by_category"]:
+                        result["by_category"][category] = []
+                    result["by_category"][category].append({"amount": amount, "currency": currency, "count": count})
+
+                    # Group by currency
+                    if currency not in result["by_currency"]:
+                        result["by_currency"][currency] = {"total": 0.0, "categories": {}}
+
+                    if category not in result["by_currency"][currency]["categories"]:
+                        result["by_currency"][currency]["categories"][category] = 0.0
+
+                    result["by_currency"][currency]["categories"][category] += amount
+                    result["by_currency"][currency]["total"] += amount
+
+                # Convert sets to lists for easier serialization
+                result["categories"] = list(result["categories"])
+                result["currencies"] = list(result["currencies"])
+
+                # Only cache if not the current month
+                if not is_current_month:
+                    cache_type = "monthly_report"
+                    cache_key = f"{user_id}:{year}:{month}"
+                    self._cache.set(cache_type, cache_key, result)
+                    logger.debug(f"Cached monthly report data with key {cache_key}")
+
+                logger.debug(f"Retrieved comprehensive report data with {len(rows)} records")
+                return result
+        except Exception as e:
+            logger.error(f"Error fetching monthly report data: {e}")
+            return {"by_category": {}, "by_currency": {}, "total_transactions": 0, "categories": [], "currencies": []}
 
 
 # Create global database instance

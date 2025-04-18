@@ -85,8 +85,10 @@ async def handle_chart_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) ->
             await query.edit_message_text("❌ Set your main currency using /main_currency.")
             return
 
-        rows = await db.get_spending_totals_by_category(user_id, str(year), f"{month:02d}")
-        if not rows:
+        # Use the new optimized method that returns comprehensive report data
+        report_data = await db.get_monthly_report_data(user_id, str(year), f"{month:02d}")
+
+        if not report_data["categories"]:
             log_user_action(user_id, f"has no spending data for {month}/{year}")
             await query.edit_message_text("📭 No spendings found for this month.")
             return
@@ -94,15 +96,19 @@ async def handle_chart_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) ->
         # Convert all amounts to main currency and aggregate by category
         converted_data = {}
         conversion_errors = []
-        for category, total, currency in rows:
-            try:
-                converted_amount = convert_currency(total, currency, main_currency)
-                converted_data[category] = converted_data.get(category, 0) + converted_amount
-            except Exception as e:
-                error_detail = f"Error converting {total} {currency} to {main_currency}: {e}"
-                logger.error(error_detail)
-                conversion_errors.append(error_detail)
-                continue
+
+        # Process data from each currency in the report
+        for currency in report_data["currencies"]:
+            currency_data = report_data["by_currency"][currency]
+            for category, amount in currency_data["categories"].items():
+                try:
+                    converted_amount = convert_currency(amount, currency, main_currency)
+                    converted_data[category] = converted_data.get(category, 0) + converted_amount
+                except Exception as e:
+                    error_detail = f"Error converting {amount} {currency} to {main_currency}: {e}"
+                    logger.error(error_detail)
+                    conversion_errors.append(error_detail)
+                    continue
 
         # Create DataFrame from converted data
         data = pd.DataFrame([{"category": cat, "total": amount} for cat, amount in converted_data.items()])
