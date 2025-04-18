@@ -40,35 +40,10 @@ async def handle_settings_callback(update: Update, _: ContextTypes.DEFAULT_TYPE)
     section = data[1] if len(data) > 1 else None
 
     if section == "currency":
-        log_user_action(user_id, "accessed currency settings")
-        keyboard = [
-            [InlineKeyboardButton("➕ Add Currency", callback_data="settings_action:add_currency")],
-            [
-                InlineKeyboardButton(
-                    "➖ Remove Currency", callback_data="settings_action:remove_currency"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🔄 Set Main Currency", callback_data="settings_action:main_currency"
-                )
-            ],
-            [InlineKeyboardButton("« Back", callback_data="settings_back:main")],
-        ]
-        text = "💱 *Currency Settings*\n\nManage your currencies:"
+        await show_currency_section(update, _)
 
     elif section == "category":
-        log_user_action(user_id, "accessed category settings")
-        keyboard = [
-            [InlineKeyboardButton("➕ Add Category", callback_data="settings_action:add_category")],
-            [
-                InlineKeyboardButton(
-                    "➖ Remove Category", callback_data="settings_action:remove_category"
-                )
-            ],
-            [InlineKeyboardButton("« Back", callback_data="settings_back:main")],
-        ]
-        text = "📋 *Category Settings*\n\nManage your spending categories:"
+        await show_category_section(update, _)
 
     elif section == "data":
         log_user_action(user_id, "accessed data management settings")
@@ -78,6 +53,9 @@ async def handle_settings_callback(update: Update, _: ContextTypes.DEFAULT_TYPE)
             [InlineKeyboardButton("« Back", callback_data="settings_back:main")],
         ]
         text = "📊 *Data Management*\n\nImport or export your spending data:"
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="Markdown")
 
     else:
         # Return to main settings menu
@@ -101,8 +79,8 @@ async def handle_settings_callback(update: Update, _: ContextTypes.DEFAULT_TYPE)
         ]
         text = "⚙️ *Settings Menu*\n\nSelect a settings category below:"
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="Markdown")
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="Markdown")
 
 
 async def handle_settings_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -117,10 +95,12 @@ async def handle_settings_action(update: Update, context: ContextTypes.DEFAULT_T
     # Import these here to avoid circular imports
     from handlers.settings.category import (
         show_add_category_options,
+        show_archived_category_options,
         show_remove_category_options,
     )
     from handlers.settings.currency import (
         show_add_currency_options,
+        show_archived_currency_options,
         show_main_currency_options,
         show_remove_currency_options,
     )
@@ -131,8 +111,12 @@ async def handle_settings_action(update: Update, context: ContextTypes.DEFAULT_T
             await show_add_currency_options(update, user_id)
 
         case "remove_currency":
-            # Show user currencies to remove
+            # Show user currencies to archive
             await show_remove_currency_options(update, user_id)
+
+        case "restore_currency":
+            # Show archived currencies to restore
+            await show_archived_currency_options(update, user_id)
 
         case "main_currency":
             # Show currency selection for setting main currency
@@ -143,8 +127,12 @@ async def handle_settings_action(update: Update, context: ContextTypes.DEFAULT_T
             await show_add_category_options(update, user_id)
 
         case "remove_category":
-            # Show user categories to remove
+            # Show user categories to archive
             await show_remove_category_options(update, user_id)
+
+        case "restore_category":
+            # Show archived categories to restore
+            await show_archived_category_options(update, user_id)
 
         case "export":
             # Use the new interactive export handler
@@ -190,3 +178,68 @@ async def handle_settings_action(update: Update, context: ContextTypes.DEFAULT_T
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode="Markdown",
             )
+
+
+async def show_currency_section(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show currency settings section."""
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    log_user_action(user_id, "viewing currency settings")
+
+    # Create keyboard with currency options
+    keyboard = [
+        [InlineKeyboardButton("➕ Add Currency", callback_data="settings_action:add_currency")],
+        [
+            InlineKeyboardButton(
+                "🗄️ Archive Currency", callback_data="settings_action:remove_currency"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔄 Restore Currency", callback_data="settings_action:restore_currency"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🏆 Set Main Currency", callback_data="settings_action:main_currency"
+            )
+        ],
+        [InlineKeyboardButton("« Back", callback_data="settings_back:main")],
+    ]
+
+    await query.edit_message_text(
+        "📊 *Currency Settings*\n\nManage your currencies:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown",
+    )
+
+
+async def show_category_section(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show category settings section."""
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    log_user_action(user_id, "viewing category settings")
+
+    # Create keyboard with category options
+    keyboard = [
+        [InlineKeyboardButton("➕ Add Category", callback_data="settings_action:add_category")],
+        [
+            InlineKeyboardButton(
+                "🗄️ Archive Category", callback_data="settings_action:remove_category"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔄 Restore Category", callback_data="settings_action:restore_category"
+            )
+        ],
+        [InlineKeyboardButton("« Back", callback_data="settings_back:main")],
+    ]
+
+    await query.edit_message_text(
+        "📊 *Category Settings*\n\nManage your spending categories:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown",
+    )

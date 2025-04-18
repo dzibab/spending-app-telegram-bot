@@ -21,7 +21,6 @@ from handlers.category import (
 from handlers.currency import (
     add_currency_conversation_handler,
     handle_cancel_remove_currency,
-    handle_confirm_remove_currency,
     handle_remove_currency_callback,
     remove_currency_handler,
 )
@@ -36,17 +35,22 @@ from handlers.list import handle_list_callback, list_spendings_handler
 from handlers.main_currency import choose_main_currency_handler, handle_main_currency_callback
 from handlers.report import handle_chart_callback, handle_report_callback, report_handler
 from handlers.search import handle_search_callback, search_conversation_handler
-from handlers.settings import (
+from handlers.settings.category import (
     handle_add_category,
+    handle_remove_category,
+    handle_restore_category,
+)
+from handlers.settings.currency import (
     handle_add_currency,
     handle_confirm_remove_currency,
-    handle_custom_input_request,
-    handle_remove_category,
     handle_remove_currency,
+    handle_restore_currency,
     handle_set_main_currency,
+)
+from handlers.settings.custom_input import handle_custom_input_request, handle_settings_text_input
+from handlers.settings.menu import (
     handle_settings_action,
     handle_settings_callback,
-    handle_settings_text_input,
     settings_handler,
 )
 from handlers.spending import (
@@ -73,6 +77,11 @@ async def post_init(application: Application) -> None:
     # Initialize database tables
     logger.info("Initializing database")
     await db.create_tables()
+
+    # Migrate database if needed
+    logger.info("Running database migrations")
+    await db.migrate_database()
+    logger.info("Database migration completed")
 
 
 async def shutdown(_: Application) -> None:
@@ -137,9 +146,11 @@ if __name__ == "__main__":
         CallbackQueryHandler(
             handle_confirm_remove_currency, pattern=r"^settings_confirm_remove_currency:"
         ),
+        CallbackQueryHandler(handle_restore_currency, pattern=r"^settings_restore_currency:"),
         CallbackQueryHandler(handle_set_main_currency, pattern=r"^settings_set_main_currency:"),
         CallbackQueryHandler(handle_add_category, pattern=r"^settings_add_category:"),
         CallbackQueryHandler(handle_remove_category, pattern=r"^settings_remove_category:"),
+        CallbackQueryHandler(handle_restore_category, pattern=r"^settings_restore_category:"),
         # Original handlers
         CallbackQueryHandler(handle_report_callback, pattern=r"^month:\d{2}:\d{4}$"),
         CallbackQueryHandler(handle_chart_callback, pattern=r"^chart:(bar|pie):\d{1,2}:\d{4}$"),

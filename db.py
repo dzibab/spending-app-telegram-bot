@@ -179,6 +179,7 @@ class Database:
                     CREATE TABLE IF NOT EXISTS currencies (
                         user_id INTEGER NOT NULL,
                         currency_code TEXT NOT NULL,
+                        is_active BOOLEAN NOT NULL DEFAULT 1,
                         PRIMARY KEY (user_id, currency_code)
                     );
                 """)
@@ -188,6 +189,7 @@ class Database:
                     CREATE TABLE IF NOT EXISTS categories (
                         user_id INTEGER NOT NULL,
                         category_name TEXT NOT NULL,
+                        is_active BOOLEAN NOT NULL DEFAULT 1,
                         PRIMARY KEY (user_id, category_name)
                     );
                 """)
@@ -203,6 +205,43 @@ class Database:
             logger.info("Database tables initialized successfully")
         except Exception as e:
             logger.error(f"Error creating database tables: {e}")
+            raise
+
+    async def migrate_database(self) -> None:
+        """Migrate database to add new columns if needed."""
+        logger.info("Checking if database migration is needed")
+        try:
+            async with self.connection() as cursor:
+                # Check if is_active column exists in currencies table
+                await cursor.execute("PRAGMA table_info(currencies)")
+                currencies_columns = await cursor.fetchall()
+                has_is_active_currencies = any(col[1] == "is_active" for col in currencies_columns)
+
+                # Check if is_active column exists in categories table
+                await cursor.execute("PRAGMA table_info(categories)")
+                categories_columns = await cursor.fetchall()
+                has_is_active_categories = any(col[1] == "is_active" for col in categories_columns)
+
+                # Add is_active column to currencies if needed
+                if not has_is_active_currencies:
+                    logger.info("Adding is_active column to currencies table")
+                    await cursor.execute(
+                        "ALTER TABLE currencies ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"
+                    )
+
+                # Add is_active column to categories if needed
+                if not has_is_active_categories:
+                    logger.info("Adding is_active column to categories table")
+                    await cursor.execute(
+                        "ALTER TABLE categories ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"
+                    )
+
+                if not has_is_active_currencies or not has_is_active_categories:
+                    logger.info("Database migration completed successfully")
+                else:
+                    logger.info("No database migration needed")
+        except Exception as e:
+            logger.error(f"Error migrating database: {e}")
             raise
 
     async def initialize_user_currencies(self, user_id: int) -> None:
@@ -268,51 +307,75 @@ class Database:
             logger.error(f"Error initializing defaults for user {user_id}: {e}")
             raise
 
-    async def get_user_currencies(self, user_id: int) -> list[str]:
-        """Get list of currencies for a user."""
-        logger.debug(f"Fetching currencies for user {user_id}")
+    async def get_user_currencies(self, user_id: int, include_archived: bool = False) -> list[str]:
+        """Get list of currencies for a user.
+
+        Args:
+            user_id: The user ID
+            include_archived: Whether to include archived currencies in the result
+
+        Returns:
+            List of currency codes
+        """
+        logger.debug(f"Fetching currencies for user {user_id}, include_archived={include_archived}")
         try:
-            # Check cache first
-            cached_currencies = self._cache.get(self.CACHE_USER_CURRENCIES, user_id)
-            if cached_currencies is not None:
-                logger.debug(f"Cache hit for user {user_id} currencies")
-                return cached_currencies
+            # Check cache first - only use cache for active currencies
+            if not include_archived:
+                cached_currencies = self._cache.get(self.CACHE_USER_CURRENCIES, user_id)
+                if cached_currencies is not None:
+                    logger.debug(f"Cache hit for user {user_id} currencies")
+                    return cached_currencies
 
             async with self.connection() as cursor:
-                await cursor.execute(
-                    "SELECT currency_code FROM currencies WHERE user_id = ?", (user_id,)
-                )
+                query = "SELECT currency_code FROM currencies WHERE user_id = ?"
+                if not include_archived:
+                    query += " AND is_active = 1"
+
+                await cursor.execute(query, (user_id,))
                 rows = await cursor.fetchall()
                 currencies = [row[0] for row in rows]
                 logger.debug(f"Retrieved {len(currencies)} currencies for user {user_id}")
 
-                # Update cache
-                self._cache.set(self.CACHE_USER_CURRENCIES, user_id, currencies)
+                # Update cache only for active currencies
+                if not include_archived:
+                    self._cache.set(self.CACHE_USER_CURRENCIES, user_id, currencies)
                 return currencies
         except Exception as e:
             logger.error(f"Error fetching currencies for user {user_id}: {e}")
             return []
 
-    async def get_user_categories(self, user_id: int) -> list[str]:
-        """Get list of categories for a user."""
-        logger.debug(f"Fetching categories for user {user_id}")
+    async def get_user_categories(self, user_id: int, include_archived: bool = False) -> list[str]:
+        """Get list of categories for a user.
+
+        Args:
+            user_id: The user ID
+            include_archived: Whether to include archived categories in the result
+
+        Returns:
+            List of category names
+        """
+        logger.debug(f"Fetching categories for user {user_id}, include_archived={include_archived}")
         try:
-            # Check cache first
-            cached_categories = self._cache.get(self.CACHE_USER_CATEGORIES, user_id)
-            if cached_categories is not None:
-                logger.debug(f"Cache hit for user {user_id} categories")
-                return cached_categories
+            # Check cache first - only use cache for active categories
+            if not include_archived:
+                cached_categories = self._cache.get(self.CACHE_USER_CATEGORIES, user_id)
+                if cached_categories is not None:
+                    logger.debug(f"Cache hit for user {user_id} categories")
+                    return cached_categories
 
             async with self.connection() as cursor:
-                await cursor.execute(
-                    "SELECT category_name FROM categories WHERE user_id = ?", (user_id,)
-                )
+                query = "SELECT category_name FROM categories WHERE user_id = ?"
+                if not include_archived:
+                    query += " AND is_active = 1"
+
+                await cursor.execute(query, (user_id,))
                 rows = await cursor.fetchall()
                 categories = [row[0] for row in rows]
                 logger.debug(f"Retrieved {len(categories)} categories for user {user_id}")
 
-                # Update cache
-                self._cache.set(self.CACHE_USER_CATEGORIES, user_id, categories)
+                # Update cache only for active categories
+                if not include_archived:
+                    self._cache.set(self.CACHE_USER_CATEGORIES, user_id, categories)
                 return categories
         except Exception as e:
             logger.error(f"Error fetching categories for user {user_id}: {e}")
@@ -398,6 +461,174 @@ class Database:
         except Exception as e:
             logger.error(f"Error removing category {category} for user {user_id}: {e}")
             return False
+
+    async def archive_currency(self, user_id: int, currency: str) -> bool:
+        """Archive (hide) a currency instead of deleting it.
+
+        Args:
+            user_id: The user ID
+            currency: Currency code to archive
+
+        Returns:
+            Whether the operation was successful
+        """
+        logger.info(f"Archiving currency {currency} for user {user_id}")
+        try:
+            async with self.transaction() as cursor:
+                await cursor.execute(
+                    "UPDATE currencies SET is_active = 0 WHERE user_id = ? AND currency_code = ?;",
+                    (user_id, currency),
+                )
+                success = cursor.rowcount > 0
+                if success:
+                    logger.info(f"Currency {currency} archived for user {user_id}")
+                else:
+                    logger.warning(f"Currency {currency} not found for user {user_id}")
+
+                # Invalidate cache
+                self._cache.invalidate(self.CACHE_USER_CURRENCIES, user_id)
+                return success
+        except Exception as e:
+            logger.error(f"Error archiving currency {currency} for user {user_id}: {e}")
+            return False
+
+    async def unarchive_currency(self, user_id: int, currency: str) -> bool:
+        """Unarchive (unhide) a previously archived currency.
+
+        Args:
+            user_id: The user ID
+            currency: Currency code to unarchive
+
+        Returns:
+            Whether the operation was successful
+        """
+        logger.info(f"Unarchiving currency {currency} for user {user_id}")
+        try:
+            async with self.transaction() as cursor:
+                await cursor.execute(
+                    "UPDATE currencies SET is_active = 1 WHERE user_id = ? AND currency_code = ?;",
+                    (user_id, currency),
+                )
+                success = cursor.rowcount > 0
+                if success:
+                    logger.info(f"Currency {currency} unarchived for user {user_id}")
+                else:
+                    logger.warning(f"Currency {currency} not found for user {user_id}")
+
+                # Invalidate cache
+                self._cache.invalidate(self.CACHE_USER_CURRENCIES, user_id)
+                return success
+        except Exception as e:
+            logger.error(f"Error unarchiving currency {currency} for user {user_id}: {e}")
+            return False
+
+    async def archive_category(self, user_id: int, category: str) -> bool:
+        """Archive (hide) a category instead of deleting it.
+
+        Args:
+            user_id: The user ID
+            category: Category name to archive
+
+        Returns:
+            Whether the operation was successful
+        """
+        logger.info(f"Archiving category {category} for user {user_id}")
+        try:
+            async with self.transaction() as cursor:
+                await cursor.execute(
+                    "UPDATE categories SET is_active = 0 WHERE user_id = ? AND category_name = ?;",
+                    (user_id, category),
+                )
+                success = cursor.rowcount > 0
+                if success:
+                    logger.info(f"Category {category} archived for user {user_id}")
+                else:
+                    logger.warning(f"Category {category} not found for user {user_id}")
+
+                # Invalidate cache
+                self._cache.invalidate(self.CACHE_USER_CATEGORIES, user_id)
+                return success
+        except Exception as e:
+            logger.error(f"Error archiving category {category} for user {user_id}: {e}")
+            return False
+
+    async def unarchive_category(self, user_id: int, category: str) -> bool:
+        """Unarchive (unhide) a previously archived category.
+
+        Args:
+            user_id: The user ID
+            category: Category name to unarchive
+
+        Returns:
+            Whether the operation was successful
+        """
+        logger.info(f"Unarchiving category {category} for user {user_id}")
+        try:
+            async with self.transaction() as cursor:
+                await cursor.execute(
+                    "UPDATE categories SET is_active = 1 WHERE user_id = ? AND category_name = ?;",
+                    (user_id, category),
+                )
+                success = cursor.rowcount > 0
+                if success:
+                    logger.info(f"Category {category} unarchived for user {user_id}")
+                else:
+                    logger.warning(f"Category {category} not found for user {user_id}")
+
+                # Invalidate cache
+                self._cache.invalidate(self.CACHE_USER_CATEGORIES, user_id)
+                return success
+        except Exception as e:
+            logger.error(f"Error unarchiving category {category} for user {user_id}: {e}")
+            return False
+
+    async def get_archived_currencies(self, user_id: int) -> list[str]:
+        """Get list of archived currencies for a user.
+
+        Args:
+            user_id: The user ID
+
+        Returns:
+            List of archived currency codes
+        """
+        logger.debug(f"Fetching archived currencies for user {user_id}")
+        try:
+            async with self.connection() as cursor:
+                await cursor.execute(
+                    "SELECT currency_code FROM currencies WHERE user_id = ? AND is_active = 0",
+                    (user_id,),
+                )
+                rows = await cursor.fetchall()
+                archived_currencies = [row[0] for row in rows]
+                logger.debug(f"Retrieved {len(archived_currencies)} archived currencies")
+                return archived_currencies
+        except Exception as e:
+            logger.error(f"Error fetching archived currencies for user {user_id}: {e}")
+            return []
+
+    async def get_archived_categories(self, user_id: int) -> list[str]:
+        """Get list of archived categories for a user.
+
+        Args:
+            user_id: The user ID
+
+        Returns:
+            List of archived category names
+        """
+        logger.debug(f"Fetching archived categories for user {user_id}")
+        try:
+            async with self.connection() as cursor:
+                await cursor.execute(
+                    "SELECT category_name FROM categories WHERE user_id = ? AND is_active = 0",
+                    (user_id,),
+                )
+                rows = await cursor.fetchall()
+                archived_categories = [row[0] for row in rows]
+                logger.debug(f"Retrieved {len(archived_categories)} archived categories")
+                return archived_categories
+        except Exception as e:
+            logger.error(f"Error fetching archived categories for user {user_id}: {e}")
+            return []
 
     async def get_user_main_currency(self, user_id: int) -> str | None:
         """Get main currency for a user."""
