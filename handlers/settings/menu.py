@@ -3,9 +3,7 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from db import db
 from handlers.common import log_user_action
-from handlers.settings.utils import get_common_currencies, get_common_categories
 
 
 async def settings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
@@ -117,14 +115,14 @@ async def handle_settings_action(update: Update, context: ContextTypes.DEFAULT_T
     action = data[1] if len(data) > 1 else None
 
     # Import these here to avoid circular imports
-    from handlers.settings.currency import (
-        show_add_currency_options,
-        show_remove_currency_options,
-        show_main_currency_options,
-    )
     from handlers.settings.category import (
         show_add_category_options,
         show_remove_category_options,
+    )
+    from handlers.settings.currency import (
+        show_add_currency_options,
+        show_main_currency_options,
+        show_remove_currency_options,
     )
 
     match action:

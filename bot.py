@@ -20,9 +20,9 @@ from handlers.category import (
 )
 from handlers.currency import (
     add_currency_conversation_handler,
-    handle_remove_currency_callback,
-    handle_confirm_remove_currency,
     handle_cancel_remove_currency,
+    handle_confirm_remove_currency,
+    handle_remove_currency_callback,
     remove_currency_handler,
 )
 from handlers.export_csv import export_spendings_handler, handle_export_callback

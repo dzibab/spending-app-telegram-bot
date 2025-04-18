@@ -1,7 +1,6 @@
 """Utility functions and constants for settings modules."""
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from handlers.common import handle_db_error
 
 # Common currency codes to offer for quick addition
 COMMON_CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "HKD", "SGD"]

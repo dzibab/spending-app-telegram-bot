@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 
 from db import db
 from handlers.common import handle_db_error, log_user_action
-from handlers.settings.utils import get_common_currencies, create_back_button, create_error_keyboard
+from handlers.settings.utils import create_back_button, create_error_keyboard, get_common_currencies
 from utils.logging import logger
 
 

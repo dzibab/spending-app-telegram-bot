@@ -1,4 +1,3 @@
-from datetime import date
 
 from telegram import ReplyKeyboardRemove, Update
 from telegram.ext import CommandHandler, ContextTypes, ConversationHandler, MessageHandler, filters
@@ -6,11 +5,10 @@ from telegram.ext import CommandHandler, ContextTypes, ConversationHandler, Mess
 from constants import BOT_COMMANDS
 from db import db
 from handlers.common import cancel, create_keyboard_markup, handle_db_error, log_user_action
-from utils.date_utils import parse_date_to_datetime
 from utils.validation import (
     validate_amount,
-    validate_currency_code,
     validate_category,
+    validate_currency_code,
     validate_date,
     validate_description,
 )

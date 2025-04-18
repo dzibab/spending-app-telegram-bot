@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 
 from db import db
 from handlers.common import log_user_action
-from utils.validation import validate_currency_code, validate_category
+from utils.validation import validate_category, validate_currency_code
 
 
 async def handle_custom_input_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -182,7 +182,7 @@ async def handle_csv_file_upload(update: Update, context: ContextTypes.DEFAULT_T
 
     except Exception as e:
         error_message = (
-            f"❌ Error processing file: {str(e)}\n\nPlease check your file format and try again."
+            f"❌ Error processing file: {e!s}\n\nPlease check your file format and try again."
         )
         logger.error(f"Error processing CSV file: {e}")
 
@@ -364,7 +364,7 @@ async def process_csv_import(user_id: int, csv_content: io.StringIO) -> str:
                     # Parse date with flexible format support
                     formatted_date = parse_date(date_str)
                 except ValueError as e:
-                    stats["errors"].append(f"Row {row_num}: {str(e)}")
+                    stats["errors"].append(f"Row {row_num}: {e!s}")
                     stats["failed"] += 1
                     continue
 

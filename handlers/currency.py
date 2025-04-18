@@ -10,7 +10,6 @@ from telegram.ext import (
 from constants import BOT_COMMANDS
 from db import db
 from handlers.common import cancel, handle_db_error, log_user_action
-from utils.logging import logger
 from utils.validation import validate_currency_code
 
 # Define states for the conversation

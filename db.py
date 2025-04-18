@@ -2,7 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple, Any
+from typing import Any
 
 import aiosqlite
 
@@ -41,10 +41,10 @@ class Cache:
 
     def __init__(self, ttl_seconds: int = 300):
         """Initialize cache with time-to-live in seconds."""
-        self._data: Dict[str, Dict[Any, Tuple[Any, datetime]]] = {}
+        self._data: dict[str, dict[Any, tuple[Any, datetime]]] = {}
         self._ttl = ttl_seconds
 
-    def get(self, cache_type: str, key: Any) -> Optional[Any]:
+    def get(self, cache_type: str, key: Any) -> Any | None:
         """Get a value from cache if it exists and is not expired."""
         if cache_type not in self._data or key not in self._data[cache_type]:
             return None
@@ -65,7 +65,7 @@ class Cache:
         expiry = datetime.now() + timedelta(seconds=self._ttl)
         self._data[cache_type][key] = (value, expiry)
 
-    def invalidate(self, cache_type: str, key: Optional[Any] = None) -> None:
+    def invalidate(self, cache_type: str, key: Any | None = None) -> None:
         """Invalidate a specific cache entry or all entries of a given type."""
         if cache_type not in self._data:
             return

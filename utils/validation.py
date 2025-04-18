@@ -2,13 +2,11 @@
 
 import re
 from datetime import datetime
-from typing import Optional, Tuple, Union
 
 from utils.date_utils import parse_date_to_datetime
-from utils.logging import logger
 
 
-def validate_currency_code(code: str) -> Tuple[bool, str]:
+def validate_currency_code(code: str) -> tuple[bool, str]:
     """
     Validate a currency code.
 
@@ -33,7 +31,7 @@ def validate_currency_code(code: str) -> Tuple[bool, str]:
     return True, ""
 
 
-def validate_amount(amount_str: str) -> Tuple[bool, Union[float, str]]:
+def validate_amount(amount_str: str) -> tuple[bool, float | str]:
     """
     Validate an amount string and convert to float if valid.
 
@@ -68,7 +66,7 @@ def validate_amount(amount_str: str) -> Tuple[bool, Union[float, str]]:
         return False, "Unable to convert amount to a number"
 
 
-def validate_date(date_str: str) -> Tuple[bool, Union[datetime, str]]:
+def validate_date(date_str: str) -> tuple[bool, datetime | str]:
     """
     Validate a date string and convert to datetime if valid.
 
@@ -103,7 +101,7 @@ def validate_date(date_str: str) -> Tuple[bool, Union[datetime, str]]:
         return False, str(e)
 
 
-def validate_category(category: str) -> Tuple[bool, str]:
+def validate_category(category: str) -> tuple[bool, str]:
     """
     Validate a category name.
 
@@ -124,7 +122,7 @@ def validate_category(category: str) -> Tuple[bool, str]:
     return True, ""
 
 
-def validate_description(description: str, max_length: int = 200) -> Tuple[bool, str]:
+def validate_description(description: str, max_length: int = 200) -> tuple[bool, str]:
     """
     Validate a spending description.
 
