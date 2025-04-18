@@ -1229,6 +1229,70 @@ class Database:
                 "currencies": [],
             }
 
+    async def execute_query(self, query: str, params: tuple = ()) -> list:
+        """Execute a query and return the results.
+
+        Args:
+            query: SQL query to execute
+            params: Query parameters
+
+        Returns:
+            List of result rows
+        """
+        try:
+            async with self.connection() as cursor:
+                await cursor.execute(query, params)
+                return await cursor.fetchall()
+        except Exception as e:
+            logger.error(f"Error executing query: {e}")
+            return []
+
+    async def get_frequently_used_categories(self, user_id: int, limit: int = 5) -> list[str]:
+        """Get the most frequently used categories for a user.
+
+        Args:
+            user_id: The user ID to get categories for
+            limit: Maximum number of categories to return
+
+        Returns:
+            List of category names ordered by frequency of use
+        """
+        query = """
+            SELECT category, COUNT(*) as count
+            FROM spendings
+            WHERE user_id = ?
+            GROUP BY category
+            ORDER BY count DESC
+            LIMIT ?
+        """
+
+        result = await self.execute_query(query, (user_id, limit))
+        return [row[0] for row in result]
+
+    async def get_recent_spendings_by_category(
+        self, user_id: int, category: str, limit: int = 3
+    ) -> list[dict]:
+        """Get recent spending descriptions for a specific category.
+
+        Args:
+            user_id: The user ID to get spendings for
+            category: The category to filter by
+            limit: Maximum number of spendings to return
+
+        Returns:
+            List of spending dictionaries with description, amount and currency
+        """
+        query = """
+            SELECT description, amount, currency
+            FROM spendings
+            WHERE user_id = ? AND category = ?
+            ORDER BY date DESC
+            LIMIT ?
+        """
+
+        result = await self.execute_query(query, (user_id, category, limit))
+        return [{"description": row[0], "amount": row[1], "currency": row[2]} for row in result]
+
 
 # Create global database instance
 db = Database()

@@ -31,6 +31,8 @@ async def start_add(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
 async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
     description = update.message.text
+    user_id = update.effective_user.id
+
     if description.lower() != "no description":
         # Validate description
         is_valid, error_message = validate_description(description)
@@ -41,8 +43,20 @@ async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
             return DESCRIPTION
 
         context.user_data["description"] = description
+
+        # Try to suggest a category based on the description
+        from utils.spending_actions import suggest_category_from_description
+
+        try:
+            suggested_category = await suggest_category_from_description(user_id, description, db)
+            if suggested_category:
+                context.user_data["suggested_category"] = suggested_category
+        except Exception:
+            # Ignore errors in suggestion
+            pass
     else:
         context.user_data["description"] = ""
+
     await update.message.reply_text("Enter the amount:", reply_markup=ReplyKeyboardRemove())
     return AMOUNT
 
@@ -105,8 +119,42 @@ async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Fetch user-specific categories
     categories = await db.get_user_categories(user_id)
 
+    # Get frequently used categories
+    try:
+        freq_categories = await db.get_frequently_used_categories(user_id, 3)
+        # If we have a suggested category from the description, put it first in the list
+        if (
+            "suggested_category" in context.user_data
+            and context.user_data["suggested_category"] in categories
+        ):
+            suggested = context.user_data["suggested_category"]
+            # Create a unique ordered list with the suggested category first, then frequent ones, then the rest
+            ordered_categories = [suggested]
+            for cat in freq_categories:
+                if cat != suggested and cat in categories:
+                    ordered_categories.append(cat)
+            for cat in categories:
+                if cat not in ordered_categories:
+                    ordered_categories.append(cat)
+
+            keyboard = create_keyboard_markup(ordered_categories)
+
+            # Add an introductory message about the suggestion
+            await update.message.reply_text(
+                f"Based on your description, I suggest the '{suggested}' category.\n"
+                "Choose a category or select a different one:",
+                reply_markup=keyboard,
+            )
+            return CATEGORY
+        else:
+            # No suggestion, just prioritize frequently used categories
+            ordered_categories = list(dict.fromkeys(freq_categories + categories))
+            keyboard = create_keyboard_markup(ordered_categories)
+    except Exception:
+        # Fallback to all categories if there's an error
+        keyboard = create_keyboard_markup(categories)
+
     # Add categories as buttons
-    keyboard = create_keyboard_markup(categories)
     await update.message.reply_text("Enter the category:", reply_markup=keyboard)
     return CATEGORY
 
@@ -119,7 +167,16 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_valid, error_message = validate_category(category)
     if not is_valid:
         categories = await db.get_user_categories(user_id)
-        keyboard = create_keyboard_markup(categories)
+        # Get frequently used categories to show them first
+        try:
+            freq_categories = await db.get_frequently_used_categories(user_id, 3)
+            # Prioritize frequently used categories in the keyboard
+            all_categories = list(dict.fromkeys(freq_categories + categories))
+            keyboard = create_keyboard_markup(all_categories)
+        except Exception:
+            # Fallback to all categories if there's an error
+            keyboard = create_keyboard_markup(categories)
+
         await update.message.reply_text(
             f"❌ {error_message}\nPlease enter a valid category:",
             reply_markup=keyboard,
@@ -129,7 +186,16 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Validate that the user has this category
     categories = await db.get_user_categories(user_id)
     if category not in categories:
-        keyboard = create_keyboard_markup(categories)
+        # Get frequently used categories to show them first
+        try:
+            freq_categories = await db.get_frequently_used_categories(user_id, 3)
+            # Prioritize frequently used categories in the keyboard
+            all_categories = list(dict.fromkeys(freq_categories + categories))
+            keyboard = create_keyboard_markup(all_categories)
+        except Exception:
+            # Fallback to all categories if there's an error
+            keyboard = create_keyboard_markup(categories)
+
         await update.message.reply_text(
             f"❌ Category '{category}' is not in your list of categories.\nPlease select a valid category from the options below:",
             reply_markup=keyboard,
@@ -138,10 +204,27 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data["category"] = category
 
+    # Try to fetch recent spendings from this category to give context
+    try:
+        recent_spendings = await db.get_recent_spendings_by_category(user_id, category, 2)
+        context.user_data["recent_spendings"] = recent_spendings
+    except Exception:
+        context.user_data["recent_spendings"] = []
+
     # Add a 'today' button for the date state
     keyboard = create_keyboard_markup(["Today"])
+
+    # Show recent spending examples if available
+    message = "Enter the date or press 'Today' for today's date:"
+    if context.user_data.get("recent_spendings"):
+        message = "Enter the date or press 'Today' for today's date:\n\n"
+        message += "Recent expenses in this category:\n"
+        for i, spending in enumerate(context.user_data["recent_spendings"]):
+            desc = spending["description"] or "No description"
+            message += f"• {desc}: {spending['amount']} {spending['currency']}\n"
+
     await update.message.reply_text(
-        "Enter the date or press 'Today' for today's date:",
+        message,
         reply_markup=keyboard,
     )
     return DATE
