@@ -28,6 +28,11 @@ BOT_COMMANDS = {
     },
     "report": {"command": "report", "description": "View spending reports", "help": "View spending reports and charts"},
     "export": {"command": "export", "description": "Export spendings", "help": "Download your spendings as a CSV file"},
+    "import": {
+        "command": "import",
+        "description": "Import spendings",
+        "help": "Upload a CSV file with spendings to import",
+    },
     "main_currency": {
         "command": "main_currency",
         "description": "Choose main currency",

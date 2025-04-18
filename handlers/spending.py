@@ -1,24 +1,15 @@
-from datetime import date, datetime
+from datetime import date
 
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
+from telegram import ReplyKeyboardRemove, Update
 from telegram.ext import CommandHandler, ContextTypes, ConversationHandler, MessageHandler, filters
 
 from constants import BOT_COMMANDS
 from db import db
 from handlers.common import cancel, create_keyboard_markup, handle_db_error, log_user_action
-from utils.logging import logger
+from utils.date_utils import parse_date_to_datetime
 
 # Define states for the conversation
 DESCRIPTION, AMOUNT, CURRENCY, CATEGORY, DATE = range(5)
-
-
-def parse_date(value: str) -> date:
-    for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
-        try:
-            return datetime.strptime(value, fmt).date()
-        except ValueError:
-            continue
-    raise ValueError("Invalid date format. Use YYYY-MM-DD or DD-MM-YYYY.")
 
 
 async def start_add(update: Update, _: ContextTypes.DEFAULT_TYPE):
@@ -104,7 +95,8 @@ async def handle_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if date_input.lower() == "today":
             spend_date = date.today()
         else:
-            spend_date = parse_date(date_input)
+            # Use the parse_date_to_datetime function which returns a datetime object
+            spend_date = parse_date_to_datetime(date_input).date()
         context.user_data["date"] = spend_date
 
         # Proceed to save the spending to the database

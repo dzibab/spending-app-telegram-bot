@@ -15,6 +15,7 @@ from handlers.currency import (
     remove_currency_handler,
 )
 from handlers.export import export_spendings_handler
+from handlers.import_ import import_conversation_handler
 from handlers.list import handle_list_callback, list_spendings_handler
 from handlers.main_currency import choose_main_currency_handler, handle_main_currency_callback
 from handlers.report import handle_chart_callback, handle_report_callback, report_handler
@@ -74,6 +75,7 @@ if __name__ == "__main__":
         add_currency_conversation_handler,
         add_category_conversation_handler,
         search_conversation_handler,
+        import_conversation_handler,
     ]
 
     # Add all handlers to the application
