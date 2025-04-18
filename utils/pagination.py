@@ -16,7 +16,9 @@ def get_current_page_from_markup(reply_markup: InlineKeyboardMarkup) -> int:
     return 0  # Default to first page if not found
 
 
-def create_pagination_buttons(current_page: int, total_pages: int, callback_prefix: str) -> list[InlineKeyboardButton]:
+def create_pagination_buttons(
+    current_page: int, total_pages: int, callback_prefix: str
+) -> list[InlineKeyboardButton]:
     """Create pagination buttons with first and last pages always visible.
     Current page is highlighted with dashes and is non-clickable.
     This function works with ITEMS_PER_PAGE constant from constants.py
@@ -50,5 +52,9 @@ def create_pagination_buttons(current_page: int, total_pages: int, callback_pref
         if current_page == total_pages - 1:
             buttons.append(InlineKeyboardButton(f"-{total_pages}-", callback_data="noop"))
         else:
-            buttons.append(InlineKeyboardButton(str(total_pages), callback_data=f"{callback_prefix}:{total_pages - 1}"))
+            buttons.append(
+                InlineKeyboardButton(
+                    str(total_pages), callback_data=f"{callback_prefix}:{total_pages - 1}"
+                )
+            )
     return buttons

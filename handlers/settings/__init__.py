@@ -1,6 +1,10 @@
 """Settings modules for the spending tracker bot."""
 
-from handlers.settings.menu import settings_handler, handle_settings_callback, handle_settings_action
+from handlers.settings.menu import (
+    settings_handler,
+    handle_settings_callback,
+    handle_settings_action,
+)
 from handlers.settings.currency import (
     handle_add_currency,
     handle_remove_currency,

@@ -70,7 +70,9 @@ async def handle_settings_text_input(update: Update, context: ContextTypes.DEFAU
             # Check if the currency already exists for this user
             existing_currencies = await db.get_user_currencies(user_id)
             if currency in existing_currencies:
-                await update.message.reply_text(f"❌ You already have {currency} in your currencies.")
+                await update.message.reply_text(
+                    f"❌ You already have {currency} in your currencies."
+                )
                 return
 
             success = await db.add_currency_to_user(user_id, currency)
@@ -85,7 +87,9 @@ async def handle_settings_text_input(update: Update, context: ContextTypes.DEFAU
                         f"✅ Currency {currency} has been added and set as your main currency!"
                     )
                 else:
-                    await update.message.reply_text(f"✅ Currency {currency} has been successfully added!")
+                    await update.message.reply_text(
+                        f"✅ Currency {currency} has been successfully added!"
+                    )
             else:
                 await update.message.reply_text(
                     "❌ Failed to add currency. It might already exist or there was an error."
@@ -111,13 +115,17 @@ async def handle_settings_text_input(update: Update, context: ContextTypes.DEFAU
             # Check if category already exists
             existing_categories = await db.get_user_categories(user_id)
             if category in existing_categories:
-                await update.message.reply_text(f"❌ You already have '{category}' in your categories.")
+                await update.message.reply_text(
+                    f"❌ You already have '{category}' in your categories."
+                )
                 return
 
             success = await db.add_category_to_user(user_id, category)
             if success:
                 log_user_action(user_id, f"added custom category '{category}'")
-                await update.message.reply_text(f"✅ Category '{category}' has been successfully added!")
+                await update.message.reply_text(
+                    f"✅ Category '{category}' has been successfully added!"
+                )
             else:
                 await update.message.reply_text(
                     "❌ Failed to add category. It might already exist or there was an error."

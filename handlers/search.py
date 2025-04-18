@@ -20,7 +20,9 @@ from utils.ui_helpers import (
 SEARCH_INPUT = range(1)
 
 
-async def show_search_results(update: Update, user_id: int, query: str = None, amount: float = None, page: int = 0):
+async def show_search_results(
+    update: Update, user_id: int, query: str = None, amount: float = None, page: int = 0
+):
     """Show paginated search results."""
     offset = page * ITEMS_PER_PAGE
     log_user_action(user_id, f"viewing search results page {page + 1}")
@@ -48,7 +50,9 @@ async def show_search_results(update: Update, user_id: int, query: str = None, a
         # Access fields as properties of the Spending object
         spending_id = spending.id
         button_text = format_spending_button_text(spending)
-        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"search_detail:{spending_id}")])
+        keyboard.append(
+            [InlineKeyboardButton(button_text, callback_data=f"search_detail:{spending_id}")]
+        )
 
     # Add pagination buttons
     keyboard.append(create_pagination_buttons(page, total_pages, "search_page"))
@@ -97,7 +101,10 @@ async def handle_search_input(update: Update, context: ContextTypes.DEFAULT_TYPE
         log_user_action(user_id, f"searching for term '{search_input}'")
 
     await show_search_results(
-        update, user_id, context.user_data.get("search_query"), context.user_data.get("search_amount")
+        update,
+        user_id,
+        context.user_data.get("search_query"),
+        context.user_data.get("search_amount"),
     )
     return ConversationHandler.END
 
@@ -116,7 +123,11 @@ async def handle_search_callback(update: Update, context: ContextTypes.DEFAULT_T
         # Handle pagination
         page = int(data.split(":")[1])
         await show_search_results(
-            update, user_id, context.user_data.get("search_query"), context.user_data.get("search_amount"), page
+            update,
+            user_id,
+            context.user_data.get("search_query"),
+            context.user_data.get("search_amount"),
+            page,
         )
     elif data.startswith("search_detail:"):
         # Handle spending details view
@@ -133,8 +144,16 @@ async def handle_search_callback(update: Update, context: ContextTypes.DEFAULT_T
             text = await format_spending_details(spending)
             # Add both back and delete buttons
             keyboard = [
-                [InlineKeyboardButton("« Back to search results", callback_data=f"search_page:{current_page}")],
-                [InlineKeyboardButton("🗑️ Delete", callback_data=f"search_delete:{spending_id}:{current_page}")],
+                [
+                    InlineKeyboardButton(
+                        "« Back to search results", callback_data=f"search_page:{current_page}"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🗑️ Delete", callback_data=f"search_delete:{spending_id}:{current_page}"
+                    )
+                ],
             ]
             await query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard))
         else:
@@ -166,7 +185,10 @@ async def handle_search_callback(update: Update, context: ContextTypes.DEFAULT_T
     elif data == "search_back":
         # For backward compatibility, handle the old "search_back" callback
         await show_search_results(
-            update, user_id, context.user_data.get("search_query"), context.user_data.get("search_amount")
+            update,
+            user_id,
+            context.user_data.get("search_query"),
+            context.user_data.get("search_amount"),
         )
 
 

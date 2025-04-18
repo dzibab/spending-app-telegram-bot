@@ -12,7 +12,9 @@ logger.setLevel(logging.DEBUG)
 
 # Create formatters
 console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s")
+file_formatter = logging.Formatter(
+    "%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
+)
 
 # Create console handler with INFO level
 console_handler = logging.StreamHandler()

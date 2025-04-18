@@ -28,7 +28,9 @@ async def choose_main_currency_handler(update: Update, _: ContextTypes.DEFAULT_T
         keyboard = []
         for currency in currencies:
             button_text = f"{currency} {'✓' if currency == current_main else ''}"
-            keyboard.append([InlineKeyboardButton(button_text, callback_data=f"main_currency:{currency}")])
+            keyboard.append(
+                [InlineKeyboardButton(button_text, callback_data=f"main_currency:{currency}")]
+            )
 
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text("Select your main currency:", reply_markup=reply_markup)

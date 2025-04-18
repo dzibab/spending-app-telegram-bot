@@ -15,6 +15,8 @@ async def start_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
         await db.initialize_user_defaults(user_id)
         log_user_action(user_id, "initialized with default settings")
 
-        await update.message.reply_text(f"👋 Welcome to the Spending Tracker Bot!\n{BOT_USAGE_INSTRUCTIONS}")
+        await update.message.reply_text(
+            f"👋 Welcome to the Spending Tracker Bot!\n{BOT_USAGE_INSTRUCTIONS}"
+        )
     except Exception as e:
         await handle_db_error(update, "initializing your account", e)

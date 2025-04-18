@@ -41,7 +41,9 @@ async def handle_delete_spending(
             await show_results_fn(update, user_id, **kwargs)
     else:
         logger.warning(f"Failed to remove spending {spending_id} for user {user_id}")
-        back_button = InlineKeyboardButton("« Back", callback_data=f"{return_callback_prefix}:{current_page}")
+        back_button = InlineKeyboardButton(
+            "« Back", callback_data=f"{return_callback_prefix}:{current_page}"
+        )
         await update.callback_query.edit_message_text(
             "❌ Failed to delete spending. It might have been already removed.",
             reply_markup=InlineKeyboardMarkup([[back_button]]),

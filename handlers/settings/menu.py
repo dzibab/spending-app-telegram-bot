@@ -26,7 +26,9 @@ async def settings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        "⚙️ *Settings Menu*\n\nSelect a settings category below:", reply_markup=reply_markup, parse_mode="Markdown"
+        "⚙️ *Settings Menu*\n\nSelect a settings category below:",
+        reply_markup=reply_markup,
+        parse_mode="Markdown",
     )
 
 
@@ -43,8 +45,16 @@ async def handle_settings_callback(update: Update, _: ContextTypes.DEFAULT_TYPE)
         log_user_action(user_id, "accessed currency settings")
         keyboard = [
             [InlineKeyboardButton("➕ Add Currency", callback_data="settings_action:add_currency")],
-            [InlineKeyboardButton("➖ Remove Currency", callback_data="settings_action:remove_currency")],
-            [InlineKeyboardButton("🔄 Set Main Currency", callback_data="settings_action:main_currency")],
+            [
+                InlineKeyboardButton(
+                    "➖ Remove Currency", callback_data="settings_action:remove_currency"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔄 Set Main Currency", callback_data="settings_action:main_currency"
+                )
+            ],
             [InlineKeyboardButton("« Back", callback_data="settings_back:main")],
         ]
         text = "💱 *Currency Settings*\n\nManage your currencies:"
@@ -53,7 +63,11 @@ async def handle_settings_callback(update: Update, _: ContextTypes.DEFAULT_TYPE)
         log_user_action(user_id, "accessed category settings")
         keyboard = [
             [InlineKeyboardButton("➕ Add Category", callback_data="settings_action:add_category")],
-            [InlineKeyboardButton("➖ Remove Category", callback_data="settings_action:remove_category")],
+            [
+                InlineKeyboardButton(
+                    "➖ Remove Category", callback_data="settings_action:remove_category"
+                )
+            ],
             [InlineKeyboardButton("« Back", callback_data="settings_back:main")],
         ]
         text = "📋 *Category Settings*\n\nManage your spending categories:"
@@ -73,9 +87,17 @@ async def handle_settings_callback(update: Update, _: ContextTypes.DEFAULT_TYPE)
         # Create the main settings menu with grouped options
         keyboard = [
             # Currency Settings Group
-            [InlineKeyboardButton("💱 Currency Settings", callback_data="settings_section:currency")],
+            [
+                InlineKeyboardButton(
+                    "💱 Currency Settings", callback_data="settings_section:currency"
+                )
+            ],
             # Category Settings Group
-            [InlineKeyboardButton("📋 Category Settings", callback_data="settings_section:category")],
+            [
+                InlineKeyboardButton(
+                    "📋 Category Settings", callback_data="settings_section:category"
+                )
+            ],
             # Data Management Group
             [InlineKeyboardButton("📊 Data Management", callback_data="settings_section:data")],
         ]

@@ -18,12 +18,18 @@ async def show_add_category_options(update: Update, user_id: int) -> None:
         user_categories = await db.get_user_categories(user_id)
 
         # Filter out categories the user already has
-        available_categories = [cat for cat in get_common_categories() if cat not in user_categories]
+        available_categories = [
+            cat for cat in get_common_categories() if cat not in user_categories
+        ]
 
         if not available_categories:
             # If all common categories are added, show custom input option
             keyboard = [
-                [InlineKeyboardButton("➕ Add Custom Category", callback_data="settings_custom:add_category")],
+                [
+                    InlineKeyboardButton(
+                        "➕ Add Custom Category", callback_data="settings_custom:add_category"
+                    )
+                ],
                 [create_back_button("settings_section:category")],
             ]
             await query.edit_message_text(
@@ -39,11 +45,21 @@ async def show_add_category_options(update: Update, user_id: int) -> None:
             for j in range(2):
                 if i + j < len(available_categories):
                     category = available_categories[i + j]
-                    row.append(InlineKeyboardButton(category, callback_data=f"settings_add_category:{category}"))
+                    row.append(
+                        InlineKeyboardButton(
+                            category, callback_data=f"settings_add_category:{category}"
+                        )
+                    )
             keyboard.append(row)
 
         # Add custom input and back buttons
-        keyboard.append([InlineKeyboardButton("➕ Add Custom Category", callback_data="settings_custom:add_category")])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    "➕ Add Custom Category", callback_data="settings_custom:add_category"
+                )
+            ]
+        )
         keyboard.append([create_back_button("settings_section:category")])
 
         await query.edit_message_text(
@@ -72,18 +88,28 @@ async def show_remove_category_options(update: Update, user_id: int) -> None:
             # No categories to remove
             await query.edit_message_text(
                 "You don't have any categories to remove.",
-                reply_markup=InlineKeyboardMarkup([[create_back_button("settings_section:category")]]),
+                reply_markup=InlineKeyboardMarkup(
+                    [[create_back_button("settings_section:category")]]
+                ),
             )
             return
 
         # Create keyboard with all user categories
         keyboard = []
         for category in categories:
-            keyboard.append([InlineKeyboardButton(category, callback_data=f"settings_remove_category:{category}")])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        category, callback_data=f"settings_remove_category:{category}"
+                    )
+                ]
+            )
 
         keyboard.append([create_back_button("settings_section:category")])
 
-        await query.edit_message_text("Select a category to remove:", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text(
+            "Select a category to remove:", reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
     except Exception as e:
         await handle_db_error(query, "fetching categories", e)
@@ -106,16 +132,27 @@ async def handle_add_category(update: Update, _: ContextTypes.DEFAULT_TYPE) -> N
         success = await db.add_category_to_user(user_id, category)
         if success:
             keyboard = [
-                [InlineKeyboardButton("➕ Add Another Category", callback_data="settings_action:add_category")],
-                [InlineKeyboardButton("« Back to Category Settings", callback_data="settings_section:category")],
+                [
+                    InlineKeyboardButton(
+                        "➕ Add Another Category", callback_data="settings_action:add_category"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "« Back to Category Settings", callback_data="settings_section:category"
+                    )
+                ],
             ]
             await query.edit_message_text(
-                f"✅ Category '{category}' has been successfully added!", reply_markup=InlineKeyboardMarkup(keyboard)
+                f"✅ Category '{category}' has been successfully added!",
+                reply_markup=InlineKeyboardMarkup(keyboard),
             )
         else:
             await query.edit_message_text(
                 "Failed to add category. It might already exist or there was an error.",
-                reply_markup=InlineKeyboardMarkup([[create_back_button("settings_action:add_category")]]),
+                reply_markup=InlineKeyboardMarkup(
+                    [[create_back_button("settings_action:add_category")]]
+                ),
             )
     except Exception as e:
         await handle_db_error(query, f"adding category {category}", e)
@@ -138,16 +175,27 @@ async def handle_remove_category(update: Update, _: ContextTypes.DEFAULT_TYPE) -
         success = await db.remove_category_from_user(user_id, category)
         if success:
             keyboard = [
-                [InlineKeyboardButton("Remove Another Category", callback_data="settings_action:remove_category")],
-                [InlineKeyboardButton("« Back to Category Settings", callback_data="settings_section:category")],
+                [
+                    InlineKeyboardButton(
+                        "Remove Another Category", callback_data="settings_action:remove_category"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "« Back to Category Settings", callback_data="settings_section:category"
+                    )
+                ],
             ]
             await query.edit_message_text(
-                f"✅ Category '{category}' has been successfully removed!", reply_markup=InlineKeyboardMarkup(keyboard)
+                f"✅ Category '{category}' has been successfully removed!",
+                reply_markup=InlineKeyboardMarkup(keyboard),
             )
         else:
             await query.edit_message_text(
                 "Failed to remove category. It might not exist or there was an error.",
-                reply_markup=InlineKeyboardMarkup([[create_back_button("settings_action:remove_category")]]),
+                reply_markup=InlineKeyboardMarkup(
+                    [[create_back_button("settings_action:remove_category")]]
+                ),
             )
     except Exception as e:
         await handle_db_error(query, f"removing category {category}", e)

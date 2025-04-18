@@ -38,7 +38,9 @@ async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # Validate description
         is_valid, error_message = validate_description(description)
         if not is_valid:
-            await update.message.reply_text(f"❌ {error_message}\nPlease provide a valid description:")
+            await update.message.reply_text(
+                f"❌ {error_message}\nPlease provide a valid description:"
+            )
             return DESCRIPTION
 
         context.user_data["description"] = description
@@ -180,8 +182,12 @@ async def write_spending_to_db(update: Update, context: ContextTypes.DEFAULT_TYP
         category = context.user_data["category"]
         spend_date = context.user_data["date"]
 
-        await db.add_spending(user_id, description, amount, currency, category, spend_date.isoformat())
-        log_user_action(user_id, f"added spending: {amount} {currency} for {category} on {spend_date}")
+        await db.add_spending(
+            user_id, description, amount, currency, category, spend_date.isoformat()
+        )
+        log_user_action(
+            user_id, f"added spending: {amount} {currency} for {category} on {spend_date}"
+        )
 
         await update.message.reply_text(
             f"✅ Spending added successfully!\n"

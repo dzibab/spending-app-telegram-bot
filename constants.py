@@ -1,5 +1,14 @@
 DEFAULT_CURRENCIES = ["USD", "EUR", "CNY"]
-DEFAULT_CATEGORIES = ["Food", "Transport", "Housing", "Utilities", "Health", "Entertainment", "Shopping", "Travel"]
+DEFAULT_CATEGORIES = [
+    "Food",
+    "Transport",
+    "Housing",
+    "Utilities",
+    "Health",
+    "Entertainment",
+    "Shopping",
+    "Travel",
+]
 
 BOT_COMMANDS = {
     # Frequently used commands - directly available in the main menu

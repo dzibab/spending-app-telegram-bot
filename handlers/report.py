@@ -25,7 +25,12 @@ async def report_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
             return
 
         buttons = [
-            [InlineKeyboardButton(f"{datetime(int(y), int(m), 1).strftime('%B %Y')}", callback_data=f"month:{m}:{y}")]
+            [
+                InlineKeyboardButton(
+                    f"{datetime(int(y), int(m), 1).strftime('%B %Y')}",
+                    callback_data=f"month:{m}:{y}",
+                )
+            ]
             for m, y in rows
         ]
         await update.message.reply_text(
@@ -111,7 +116,9 @@ async def handle_chart_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) ->
                     continue
 
         # Create DataFrame from converted data
-        data = pd.DataFrame([{"category": cat, "total": amount} for cat, amount in converted_data.items()])
+        data = pd.DataFrame(
+            [{"category": cat, "total": amount} for cat, amount in converted_data.items()]
+        )
 
         if data.empty:
             log_user_action(user_id, "couldn't convert currency data for chart")
@@ -121,7 +128,9 @@ async def handle_chart_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) ->
         try:
             plot_buffer = generate_plot(data, main_currency, month, year, chart_type)
             await query.message.reply_photo(photo=plot_buffer)
-            log_user_action(user_id, f"successfully generated {chart_type} chart for {month}/{year}")
+            log_user_action(
+                user_id, f"successfully generated {chart_type} chart for {month}/{year}"
+            )
             plot_buffer.close()
         except ChartError as ce:
             error_msg = f"Chart generation error: {ce}"

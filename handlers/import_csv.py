@@ -156,22 +156,34 @@ async def handle_csv_file_upload(update: Update, context: ContextTypes.DEFAULT_T
         else:  # Success
             keyboard = (
                 [
-                    [InlineKeyboardButton("Import Another File", callback_data="settings_action:import")],
-                    [InlineKeyboardButton("« Back to Settings", callback_data="settings_back:main")],
+                    [
+                        InlineKeyboardButton(
+                            "Import Another File", callback_data="settings_action:import"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "« Back to Settings", callback_data="settings_back:main"
+                        )
+                    ],
                 ]
                 if context.user_data.get("import_from_settings")
                 else []
             )
 
         # Return results to user
-        await update.message.reply_text(result, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None)
+        await update.message.reply_text(
+            result, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+        )
 
         # Clear import data
         if "import_from_settings" in context.user_data:
             del context.user_data["import_from_settings"]
 
     except Exception as e:
-        error_message = f"❌ Error processing file: {str(e)}\n\nPlease check your file format and try again."
+        error_message = (
+            f"❌ Error processing file: {str(e)}\n\nPlease check your file format and try again."
+        )
         logger.error(f"Error processing CSV file: {e}")
 
         keyboard = [
@@ -239,15 +251,25 @@ async def handle_file_upload(update: Update, context: ContextTypes.DEFAULT_TYPE)
         else:  # Success
             keyboard = (
                 [
-                    [InlineKeyboardButton("Import Another File", callback_data="settings_action:import")],
-                    [InlineKeyboardButton("« Back to Settings", callback_data="settings_back:main")],
+                    [
+                        InlineKeyboardButton(
+                            "Import Another File", callback_data="settings_action:import"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "« Back to Settings", callback_data="settings_back:main"
+                        )
+                    ],
                 ]
                 if context.user_data.get("import_from_settings")
                 else []
             )
 
         # Return results to user
-        await update.message.reply_text(result, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None)
+        await update.message.reply_text(
+            result, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+        )
 
         # Clear import data
         if "import_from_settings" in context.user_data:
@@ -256,7 +278,9 @@ async def handle_file_upload(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return ConversationHandler.END
 
     except Exception as e:
-        error_message = f"❌ Error processing file: {e}\n\nPlease check your file format and try again."
+        error_message = (
+            f"❌ Error processing file: {e}\n\nPlease check your file format and try again."
+        )
 
         keyboard = [
             [InlineKeyboardButton("📝 Download Template", callback_data="import_template")],
@@ -284,7 +308,13 @@ async def process_csv_import(user_id: int, csv_content: io.StringIO) -> str:
         Result message to show to the user
     """
     # Statistics for reporting
-    stats = {"success": 0, "failed": 0, "new_categories": set(), "new_currencies": set(), "errors": []}
+    stats = {
+        "success": 0,
+        "failed": 0,
+        "new_categories": set(),
+        "new_currencies": set(),
+        "errors": [],
+    }
 
     log_user_action(user_id, "processing CSV import")
 
@@ -352,7 +382,9 @@ async def process_csv_import(user_id: int, csv_content: io.StringIO) -> str:
 
                 currency = row[currency_idx].strip().upper()
                 if not currency or len(currency) != 3:
-                    stats["errors"].append(f"Row {row_num}: Invalid currency code (must be 3 letters)")
+                    stats["errors"].append(
+                        f"Row {row_num}: Invalid currency code (must be 3 letters)"
+                    )
                     stats["failed"] += 1
                     continue
 
@@ -364,7 +396,9 @@ async def process_csv_import(user_id: int, csv_content: io.StringIO) -> str:
 
                 # Get description (optional)
                 description = (
-                    row[description_idx].strip() if description_idx is not None and len(row) > description_idx else ""
+                    row[description_idx].strip()
+                    if description_idx is not None and len(row) > description_idx
+                    else ""
                 )
 
                 # Add new categories and currencies as needed
@@ -383,7 +417,9 @@ async def process_csv_import(user_id: int, csv_content: io.StringIO) -> str:
                         await db.set_user_main_currency(user_id, currency)
 
                 # Add the spending to the database
-                await db.add_spending(user_id, description, amount, currency, category, formatted_date)
+                await db.add_spending(
+                    user_id, description, amount, currency, category, formatted_date
+                )
                 stats["success"] += 1
 
             except Exception as e:
@@ -407,16 +443,23 @@ async def process_csv_import(user_id: int, csv_content: io.StringIO) -> str:
         result += f"\n\nAdded {len(stats['new_currencies'])} new currencies: {', '.join(stats['new_currencies'])}"
 
         # Mention if a main currency was set
-        if len(user_currencies) == len(stats["new_currencies"]) and len(stats["new_currencies"]) == 1:
+        if (
+            len(user_currencies) == len(stats["new_currencies"])
+            and len(stats["new_currencies"]) == 1
+        ):
             first_currency = next(iter(stats["new_currencies"]))
             result += f"\nSet {first_currency} as your main currency"
 
     if stats["errors"] and len(stats["errors"]) <= 5:
         result += "\n\nErrors:\n" + "\n".join(stats["errors"])
     elif stats["errors"]:
-        result += f"\n\nFirst 5 errors (of {len(stats['errors'])} total):\n" + "\n".join(stats["errors"][:5])
+        result += f"\n\nFirst 5 errors (of {len(stats['errors'])} total):\n" + "\n".join(
+            stats["errors"][:5]
+        )
 
-    log_user_action(user_id, f"completed CSV import: {stats['success']} successful, {stats['failed']} failed")
+    log_user_action(
+        user_id, f"completed CSV import: {stats['success']} successful, {stats['failed']} failed"
+    )
     return result
 
 
@@ -427,7 +470,8 @@ import_conversation_handler = ConversationHandler(
         UPLOAD_FILE: [
             MessageHandler(filters.Document.ALL, handle_file_upload),
             MessageHandler(
-                filters.TEXT & ~filters.COMMAND, lambda u, c: u.message.reply_text("Please upload a CSV file")
+                filters.TEXT & ~filters.COMMAND,
+                lambda u, c: u.message.reply_text("Please upload a CSV file"),
             ),
         ],
     },

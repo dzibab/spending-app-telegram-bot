@@ -1,5 +1,11 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import CallbackContext, CommandHandler, ConversationHandler, MessageHandler, filters
+from telegram.ext import (
+    CallbackContext,
+    CommandHandler,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
 
 from constants import BOT_COMMANDS
 from db import db
@@ -29,7 +35,9 @@ async def handle_category_input(update: Update, _: CallbackContext):
             log_user_action(user_id, f"added category '{category}'")
             await update.message.reply_text(f"Category '{category}' has been successfully added!")
         else:
-            await update.message.reply_text("Failed to add category. It might already exist or there was an error.")
+            await update.message.reply_text(
+                "Failed to add category. It might already exist or there was an error."
+            )
     except Exception as e:
         await handle_db_error(update, f"adding category {category}", e)
 
@@ -56,7 +64,8 @@ async def remove_category_handler(update: Update, _: CallbackContext):
             return
 
         keyboard = [
-            [InlineKeyboardButton(category, callback_data=f"remove_category:{category}")] for category in categories
+            [InlineKeyboardButton(category, callback_data=f"remove_category:{category}")]
+            for category in categories
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text("Select a category to remove:", reply_markup=reply_markup)
@@ -78,7 +87,9 @@ async def handle_remove_category_callback(update: Update, _: CallbackContext):
             log_user_action(user_id, f"removed category '{category}'")
             await query.edit_message_text(f"Category '{category}' has been successfully removed!")
         else:
-            await query.edit_message_text("Failed to remove category. It might not exist or there was an error.")
+            await query.edit_message_text(
+                "Failed to remove category. It might not exist or there was an error."
+            )
     except Exception as e:
         error_msg = f"Error removing category {category}: {e}"
         await query.edit_message_text(f"❌ {error_msg}")

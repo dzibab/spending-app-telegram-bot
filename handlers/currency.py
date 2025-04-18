@@ -1,5 +1,11 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import CallbackContext, CommandHandler, ConversationHandler, MessageHandler, filters
+from telegram.ext import (
+    CallbackContext,
+    CommandHandler,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
 
 from constants import BOT_COMMANDS
 from db import db
@@ -50,11 +56,17 @@ async def handle_currency_input(update: Update, _: CallbackContext):
             currencies = await db.get_user_currencies(user_id)
             if len(currencies) == 1:
                 await db.set_user_main_currency(user_id, currency)
-                await update.message.reply_text(f"✅ Currency {currency} has been added and set as your main currency!")
+                await update.message.reply_text(
+                    f"✅ Currency {currency} has been added and set as your main currency!"
+                )
             else:
-                await update.message.reply_text(f"✅ Currency {currency} has been successfully added!")
+                await update.message.reply_text(
+                    f"✅ Currency {currency} has been successfully added!"
+                )
         else:
-            await update.message.reply_text("❌ Failed to add currency. It might already exist or there was an error.")
+            await update.message.reply_text(
+                "❌ Failed to add currency. It might already exist or there was an error."
+            )
     except Exception as e:
         await handle_db_error(update, f"adding currency {currency}", e)
 
@@ -86,7 +98,9 @@ async def remove_currency_handler(update: Update, _: CallbackContext):
         keyboard = []
         for currency in currencies:
             label = f"{currency} {'✓' if currency == main_currency else ''}"
-            keyboard.append([InlineKeyboardButton(label, callback_data=f"remove_currency:{currency}")])
+            keyboard.append(
+                [InlineKeyboardButton(label, callback_data=f"remove_currency:{currency}")]
+            )
 
         reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -120,7 +134,11 @@ async def handle_remove_currency_callback(update: Update, _: CallbackContext):
         if current_main == currency:
             # If removing main currency, confirm with the user
             keyboard = [
-                [InlineKeyboardButton("Yes, Remove", callback_data=f"confirm_remove_currency:{currency}")],
+                [
+                    InlineKeyboardButton(
+                        "Yes, Remove", callback_data=f"confirm_remove_currency:{currency}"
+                    )
+                ],
                 [InlineKeyboardButton("No, Cancel", callback_data="cancel_remove_currency")],
             ]
             await query.edit_message_text(
@@ -135,7 +153,9 @@ async def handle_remove_currency_callback(update: Update, _: CallbackContext):
             log_user_action(user_id, f"removed currency {currency}")
             await query.edit_message_text(f"✅ Currency {currency} has been successfully removed!")
         else:
-            await query.edit_message_text("❌ Failed to remove currency. It might not exist or there was an error.")
+            await query.edit_message_text(
+                "❌ Failed to remove currency. It might not exist or there was an error."
+            )
     except Exception as e:
         error_msg = f"Error removing currency {currency}: {e}"
         await query.edit_message_text(f"❌ {error_msg}")
@@ -173,7 +193,9 @@ async def handle_confirm_remove_currency(update: Update, _: CallbackContext):
 
             await query.edit_message_text(message)
         else:
-            await query.edit_message_text("❌ Failed to remove currency. It might not exist or there was an error.")
+            await query.edit_message_text(
+                "❌ Failed to remove currency. It might not exist or there was an error."
+            )
     except Exception as e:
         error_msg = f"Error removing currency {currency}: {e}"
         await query.edit_message_text(f"❌ {error_msg}")
@@ -184,4 +206,6 @@ async def handle_cancel_remove_currency(update: Update, _: CallbackContext):
     query = update.callback_query
     await query.answer()
 
-    await query.edit_message_text("✅ Currency removal canceled. Your main currency remains unchanged.")
+    await query.edit_message_text(
+        "✅ Currency removal canceled. Your main currency remains unchanged."
+    )

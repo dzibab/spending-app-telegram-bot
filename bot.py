@@ -114,7 +114,9 @@ if __name__ == "__main__":
     logger.info("Starting Spending Tracker Bot")
 
     logger.info("Building application")
-    app = Application.builder().token(BOT_TOKEN).post_init(post_init).post_shutdown(shutdown).build()
+    app = (
+        Application.builder().token(BOT_TOKEN).post_init(post_init).post_shutdown(shutdown).build()
+    )
 
     # Define handlers in a compact way
     handlers = [
@@ -132,7 +134,9 @@ if __name__ == "__main__":
         CallbackQueryHandler(handle_custom_input_request, pattern=r"^settings_custom:"),
         CallbackQueryHandler(handle_add_currency, pattern=r"^settings_add_currency:"),
         CallbackQueryHandler(handle_remove_currency, pattern=r"^settings_remove_currency:"),
-        CallbackQueryHandler(handle_confirm_remove_currency, pattern=r"^settings_confirm_remove_currency:"),
+        CallbackQueryHandler(
+            handle_confirm_remove_currency, pattern=r"^settings_confirm_remove_currency:"
+        ),
         CallbackQueryHandler(handle_set_main_currency, pattern=r"^settings_set_main_currency:"),
         CallbackQueryHandler(handle_add_category, pattern=r"^settings_add_category:"),
         CallbackQueryHandler(handle_remove_category, pattern=r"^settings_remove_category:"),

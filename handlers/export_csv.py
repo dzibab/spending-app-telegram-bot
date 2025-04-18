@@ -110,7 +110,13 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
             await query.edit_message_text(
                 "No spendings found in the selected date range.",
                 reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton("« Back to Export Options", callback_data="export_back:main")]]
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "« Back to Export Options", callback_data="export_back:main"
+                            )
+                        ]
+                    ]
                 ),
             )
             return
@@ -128,7 +134,13 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
         # Write data from Spending objects
         for spending in spendings:
             writer.writerow(
-                [spending.date, spending.description, spending.amount, spending.currency, spending.category]
+                [
+                    spending.date,
+                    spending.description,
+                    spending.amount,
+                    spending.currency,
+                    spending.category,
+                ]
             )
 
         # Prepare file for sending
@@ -163,8 +175,16 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
             "✅ Export completed successfully!",
             reply_markup=InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton("Export More Data", callback_data="settings_action:export")],
-                    [InlineKeyboardButton("« Back to Settings", callback_data="settings_back:main")],
+                    [
+                        InlineKeyboardButton(
+                            "Export More Data", callback_data="settings_action:export"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "« Back to Settings", callback_data="settings_back:main"
+                        )
+                    ],
                 ]
             ),
         )

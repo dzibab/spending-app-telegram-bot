@@ -109,7 +109,9 @@ class ChartGenerator:
         self._setup_figure("bar")
 
         # Plot the bar chart
-        bars = plt.bar(self.data["category"], self.data["total"], color=plt.cm.Paired(range(len(self.data))))
+        bars = plt.bar(
+            self.data["category"], self.data["total"], color=plt.cm.Paired(range(len(self.data)))
+        )
 
         # Add percentage labels and total spending on top of each bar
         for bar, (_, total) in zip(bars, self.data.itertuples(index=False), strict=False):

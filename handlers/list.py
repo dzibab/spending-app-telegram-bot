@@ -47,7 +47,9 @@ async def show_spendings_page(update: Update, user_id: int, page: int = 0):
         # Access fields as properties of the Spending object
         spending_id = spending.id
         button_text = format_spending_button_text(spending)
-        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"list_detail:{spending_id}")])
+        keyboard.append(
+            [InlineKeyboardButton(button_text, callback_data=f"list_detail:{spending_id}")]
+        )
 
     # Add pagination buttons
     keyboard.append(create_pagination_buttons(page, total_pages, "list_page"))
@@ -98,7 +100,11 @@ async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             # Add both back and delete buttons
             keyboard = [
                 [InlineKeyboardButton("« Back to list", callback_data=f"list_page:{current_page}")],
-                [InlineKeyboardButton("🗑️ Delete", callback_data=f"list_delete:{spending_id}:{current_page}")],
+                [
+                    InlineKeyboardButton(
+                        "🗑️ Delete", callback_data=f"list_delete:{spending_id}:{current_page}"
+                    )
+                ],
             ]
             await query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard))
         else:

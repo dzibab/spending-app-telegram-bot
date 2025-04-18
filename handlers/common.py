@@ -12,7 +12,9 @@ async def cancel(update: Update, _: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-def create_keyboard_markup(items: list[str], one_time: bool = True, resize: bool = True) -> ReplyKeyboardMarkup:
+def create_keyboard_markup(
+    items: list[str], one_time: bool = True, resize: bool = True
+) -> ReplyKeyboardMarkup:
     """Create a keyboard markup from a list of items.
 
     Args:
