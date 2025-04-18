@@ -1,7 +1,31 @@
 """Utility functions for date handling."""
 
+import calendar
 import re
 from datetime import datetime
+
+
+def get_month_name(month_num: int or str) -> str:
+    """Get month name from its number.
+
+    Args:
+        month_num: Month number (1-12) as integer or string
+
+    Returns:
+        Full month name (e.g., 'January' for 1)
+
+    Raises:
+        ValueError: If month number is invalid
+    """
+    try:
+        # Convert string to int if needed
+        month = int(month_num)
+        if 1 <= month <= 12:
+            return calendar.month_name[month]
+        else:
+            raise ValueError(f"Month number must be between 1 and 12, got {month}")
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Invalid month number: {month_num}. {str(e)}")
 
 
 def parse_date(date_str: str) -> str:

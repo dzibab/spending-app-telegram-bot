@@ -1,6 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import datetime
 
 import aiosqlite
 
@@ -442,6 +443,49 @@ class Database:
                 return spendings
         except Exception as e:
             logger.error(f"Error exporting spendings: {e}")
+            return []
+
+    async def export_spendings_with_date_range(
+        self, user_id: int, start_date: datetime = None, end_date: datetime = None
+    ) -> list[Spending]:
+        """Export spendings for a user within a specific date range.
+
+        Args:
+            user_id: The user ID
+            start_date: Optional start date for filtering (inclusive)
+            end_date: Optional end date for filtering (inclusive)
+
+        Returns:
+            List of Spending objects within the date range
+        """
+        logger.debug(f"Exporting spendings for user {user_id} with date range filter")
+        try:
+            async with self.connection() as cursor:
+                params = [user_id]
+                sql = """
+                    SELECT *
+                    FROM spendings
+                    WHERE user_id = ?
+                """
+
+                # Add date range filters if provided
+                if start_date:
+                    sql += " AND date(date) >= date(?)"
+                    params.append(start_date.strftime("%Y-%m-%d"))
+
+                if end_date:
+                    sql += " AND date(date) <= date(?)"
+                    params.append(end_date.strftime("%Y-%m-%d"))
+
+                sql += " ORDER BY date DESC, id DESC"
+
+                await cursor.execute(sql, params)
+                rows = await cursor.fetchall()
+                spendings = [Spending.from_row(tuple(row)) for row in rows]
+                logger.debug(f"Exported {len(spendings)} spendings within date range")
+                return spendings
+        except Exception as e:
+            logger.error(f"Error exporting spendings with date range: {e}")
             return []
 
     async def get_spendings_count(self, user_id: int) -> int:
