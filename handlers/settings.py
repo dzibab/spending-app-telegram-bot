@@ -113,71 +113,72 @@ async def handle_settings_action(update: Update, context: ContextTypes.DEFAULT_T
     data = query.data.split(":")
     action = data[1] if len(data) > 1 else None
 
-    if action == "add_currency":
-        # Show common currencies to add
-        await show_add_currency_options(update, user_id)
+    match action:
+        case "add_currency":
+            # Show common currencies to add
+            await show_add_currency_options(update, user_id)
 
-    elif action == "remove_currency":
-        # Show user currencies to remove
-        await show_remove_currency_options(update, user_id)
+        case "remove_currency":
+            # Show user currencies to remove
+            await show_remove_currency_options(update, user_id)
 
-    elif action == "main_currency":
-        # Show currency selection for setting main currency
-        await show_main_currency_options(update, user_id)
+        case "main_currency":
+            # Show currency selection for setting main currency
+            await show_main_currency_options(update, user_id)
 
-    elif action == "add_category":
-        # Show common categories to add
-        await show_add_category_options(update, user_id)
+        case "add_category":
+            # Show common categories to add
+            await show_add_category_options(update, user_id)
 
-    elif action == "remove_category":
-        # Show user categories to remove
-        await show_remove_category_options(update, user_id)
+        case "remove_category":
+            # Show user categories to remove
+            await show_remove_category_options(update, user_id)
 
-    elif action == "export":
-        # Use the new interactive export handler
-        log_user_action(user_id, "starting interactive export from settings")
+        case "export":
+            # Use the new interactive export handler
+            log_user_action(user_id, "starting interactive export from settings")
 
-        # Show export range options
-        keyboard = []
-        from handlers.export_csv import EXPORT_RANGES
+            # Show export range options
+            keyboard = []
+            from handlers.export_csv import EXPORT_RANGES
 
-        for key, label in EXPORT_RANGES.items():
-            keyboard.append([InlineKeyboardButton(label, callback_data=f"export_range:{key}")])
+            for key, label in EXPORT_RANGES.items():
+                keyboard.append([InlineKeyboardButton(label, callback_data=f"export_range:{key}")])
 
-        # Add back button
-        keyboard.append([InlineKeyboardButton("« Back", callback_data="settings_section:data")])
+            # Add back button
+            keyboard.append([InlineKeyboardButton("« Back", callback_data="settings_section:data")])
 
-        await query.edit_message_text(
-            "📤 *Export Your Spending Data*\n\nSelect a time range to export:",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="Markdown",
-        )
+            await query.edit_message_text(
+                "📤 *Export Your Spending Data*\n\nSelect a time range to export:",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown",
+            )
 
-    elif action == "import":
-        # Use the interactive import handler directly in the current message
-        log_user_action(user_id, "starting interactive import from settings")
+        case "import":
+            # Use the interactive import handler directly in the current message
+            log_user_action(user_id, "starting interactive import from settings")
 
-        # Store that this import was initiated from settings
-        context.user_data["import_from_settings"] = True
+            # Store that this import was initiated from settings
+            context.user_data["import_from_settings"] = True
 
-        # Show import instructions with template download option
-        keyboard = [
-            [InlineKeyboardButton("📝 Download Template", callback_data="import_template")],
-            [InlineKeyboardButton("« Back to Settings", callback_data="import_cancel")],
-        ]
+            # Show import instructions with template download option
+            keyboard = [
+                [InlineKeyboardButton("📝 Download Template", callback_data="import_template")],
+                [InlineKeyboardButton("« Back to Settings", callback_data="import_cancel")],
+            ]
 
-        await query.edit_message_text(
-            "📥 *Import Your Spending Data*\n\n"
-            "To import your spendings, please upload a CSV file with the following columns:\n\n"
-            "- *Date*: Required (formats: YYYY-MM-DD, DD-MM-YYYY with delimiters -, / or .)\n"
-            "- *Amount*: Required (numeric value)\n"
-            "- *Currency*: Required (3-letter currency code)\n"
-            "- *Category*: Required\n"
-            "- *Description*: Optional\n\n"
-            "Simply upload your CSV file and I'll process it.",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="Markdown",
-        )
+            await query.edit_message_text(
+                "📥 *Import Your Spending Data*\n\n"
+                "To import your spendings, please upload a CSV file with the following columns:\n\n"
+                "- *Date*: Required (formats: YYYY-MM-DD, DD-MM-YYYY with delimiters -, / or .)\n"
+                "- *Amount*: Required (numeric value)\n"
+                "- *Currency*: Required (3-letter currency code)\n"
+                "- *Category*: Required\n"
+                "- *Description*: Optional\n\n"
+                "Simply upload your CSV file and I'll process it.",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown",
+            )
 
 
 async def show_add_currency_options(update: Update, user_id: int) -> None:
@@ -226,7 +227,7 @@ async def show_add_currency_options(update: Update, user_id: int) -> None:
     except Exception as e:
         await handle_db_error(query, "fetching currencies", e)
         await query.edit_message_text(
-            f"❌ Error fetching currencies: {str(e)}\n\nPlease try again later.",
+            f"❌ Error fetching currencies: {e}\n\nPlease try again later.",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("« Back", callback_data="settings_section:currency")]]
             ),
@@ -272,7 +273,7 @@ async def show_remove_currency_options(update: Update, user_id: int) -> None:
     except Exception as e:
         await handle_db_error(query, "fetching currencies", e)
         await query.edit_message_text(
-            f"❌ Error fetching currencies: {str(e)}\n\nPlease try again later.",
+            f"❌ Error fetching currencies: {e}\n\nPlease try again later.",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("« Back", callback_data="settings_section:currency")]]
             ),
@@ -322,7 +323,7 @@ async def show_main_currency_options(update: Update, user_id: int) -> None:
     except Exception as e:
         await handle_db_error(query, "fetching currencies", e)
         await query.edit_message_text(
-            f"❌ Error fetching currencies: {str(e)}\n\nPlease try again later.",
+            f"❌ Error fetching currencies: {e}\n\nPlease try again later.",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("« Back", callback_data="settings_section:currency")]]
             ),
@@ -375,7 +376,7 @@ async def show_add_category_options(update: Update, user_id: int) -> None:
     except Exception as e:
         await handle_db_error(query, "fetching categories", e)
         await query.edit_message_text(
-            f"❌ Error fetching categories: {str(e)}\n\nPlease try again later.",
+            f"❌ Error fetching categories: {e}\n\nPlease try again later.",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("« Back", callback_data="settings_section:category")]]
             ),
@@ -418,7 +419,7 @@ async def show_remove_category_options(update: Update, user_id: int) -> None:
     except Exception as e:
         await handle_db_error(query, "fetching categories", e)
         await query.edit_message_text(
-            f"❌ Error fetching categories: {str(e)}\n\nPlease try again later.",
+            f"❌ Error fetching categories: {e}\n\nPlease try again later.",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("« Back", callback_data="settings_section:category")]]
             ),
@@ -429,7 +430,6 @@ async def handle_custom_input_request(update: Update, context: ContextTypes.DEFA
     """Handle requests for custom input (currency or category)."""
     query = update.callback_query
     await query.answer()
-    user_id = query.from_user.id
 
     action_type = query.data.split(":")[1]  # add_currency or add_category
 
@@ -491,7 +491,7 @@ async def handle_add_currency(update: Update, _: ContextTypes.DEFAULT_TYPE) -> N
     except Exception as e:
         await handle_db_error(query, f"adding currency {currency}", e)
         await query.edit_message_text(
-            f"❌ Error adding currency: {str(e)}",
+            f"❌ Error adding currency: {e}",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("« Back", callback_data="settings_action:add_currency")]]
             ),
@@ -528,7 +528,7 @@ async def handle_remove_currency(update: Update, _: ContextTypes.DEFAULT_TYPE) -
     except Exception as e:
         await handle_db_error(query, f"removing currency {currency}", e)
         await query.edit_message_text(
-            f"❌ Error removing currency: {str(e)}",
+            f"❌ Error removing currency: {e}",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("« Back", callback_data="settings_action:remove_currency")]]
             ),
@@ -594,7 +594,7 @@ async def process_currency_removal(update: Update, user_id: int, currency: str) 
     except Exception as e:
         logger.error(f"Error processing currency removal: {e}")
         await query.edit_message_text(
-            f"❌ Error removing currency: {str(e)}",
+            f"❌ Error removing currency: {e}",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("« Back", callback_data="settings_action:remove_currency")]]
             ),
@@ -620,7 +620,7 @@ async def handle_set_main_currency(update: Update, _: ContextTypes.DEFAULT_TYPE)
     except Exception as e:
         await handle_db_error(query, f"setting main currency to {currency}", e)
         await query.edit_message_text(
-            f"❌ Error setting main currency: {str(e)}",
+            f"❌ Error setting main currency: {e}",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("« Back", callback_data="settings_action:main_currency")]]
             ),
@@ -656,7 +656,7 @@ async def handle_add_category(update: Update, _: ContextTypes.DEFAULT_TYPE) -> N
     except Exception as e:
         await handle_db_error(query, f"adding category {category}", e)
         await query.edit_message_text(
-            f"❌ Error adding category: {str(e)}",
+            f"❌ Error adding category: {e}",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("« Back", callback_data="settings_action:add_category")]]
             ),
@@ -692,7 +692,7 @@ async def handle_remove_category(update: Update, _: ContextTypes.DEFAULT_TYPE) -
     except Exception as e:
         await handle_db_error(query, f"removing category {category}", e)
         await query.edit_message_text(
-            f"❌ Error removing category: {str(e)}",
+            f"❌ Error removing category: {e}",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("« Back", callback_data="settings_action:remove_category")]]
             ),

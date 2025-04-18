@@ -1,13 +1,13 @@
 import csv
-from io import StringIO
 from datetime import datetime, timedelta
+from io import StringIO
 
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from db import db
-from handlers.common import handle_db_error, log_user_action
-from utils.date_utils import get_month_name
+from handlers.common import log_user_action
+from utils.logging import logger
 
 # Date range options for export
 EXPORT_RANGES = {
@@ -19,7 +19,7 @@ EXPORT_RANGES = {
 }
 
 
-async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def export_spendings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Handler for /export command - shows interactive export options."""
     user_id = update.effective_user.id
     log_user_action(user_id, "accessed export options")
@@ -38,7 +38,7 @@ async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT
     )
 
 
-async def handle_export_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def handle_export_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle callbacks for export options."""
     query = update.callback_query
     await query.answer()
@@ -174,7 +174,7 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
     except Exception as e:
         log_user_action(user_id, f"error during export: {e}")
         await query.edit_message_text(
-            f"❌ Export failed: {str(e)}\n\nPlease try again later.",
+            f"❌ Export failed: {e}\n\nPlease try again later.",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("« Back", callback_data="settings_action:export")]]
             ),
@@ -185,5 +185,5 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
         if output:
             try:
                 output.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Failed to close StringIO: {e}")

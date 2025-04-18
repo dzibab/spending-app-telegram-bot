@@ -25,7 +25,7 @@ def get_month_name(month_num: int or str) -> str:
         else:
             raise ValueError(f"Month number must be between 1 and 12, got {month}")
     except (ValueError, TypeError) as e:
-        raise ValueError(f"Invalid month number: {month_num}. {str(e)}")
+        raise ValueError(f"Invalid month number: {month_num}. {e}")
 
 
 def parse_date(date_str: str) -> str:

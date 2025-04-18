@@ -3,7 +3,7 @@
 import csv
 import io
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CommandHandler, ContextTypes, ConversationHandler, MessageHandler, filters
 
 from db import db
@@ -256,7 +256,7 @@ async def handle_file_upload(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return ConversationHandler.END
 
     except Exception as e:
-        error_message = f"❌ Error processing file: {str(e)}\n\nPlease check your file format and try again."
+        error_message = f"❌ Error processing file: {e}\n\nPlease check your file format and try again."
 
         keyboard = [
             [InlineKeyboardButton("📝 Download Template", callback_data="import_template")],
@@ -387,12 +387,12 @@ async def process_csv_import(user_id: int, csv_content: io.StringIO) -> str:
                 stats["success"] += 1
 
             except Exception as e:
-                stats["errors"].append(f"Row {row_num}: {str(e)}")
+                stats["errors"].append(f"Row {row_num}: {e}")
                 stats["failed"] += 1
 
     except Exception as e:
         log_user_action(user_id, f"error during CSV import: {e}")
-        return f"❌ Import failed: {str(e)}"
+        return f"❌ Import failed: {e}"
 
     # Create result message
     result = f"✅ Import completed: {stats['success']} spendings imported successfully"

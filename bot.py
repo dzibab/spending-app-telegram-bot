@@ -25,7 +25,7 @@ from handlers.currency import (
 )
 from handlers.export_csv import export_spendings_handler, handle_export_callback
 from handlers.import_csv import (
-    handle_csv_file_upload,  # Add the new standalone handler
+    handle_csv_file_upload,
     handle_import_cancel,
     import_conversation_handler,
     send_import_template,
@@ -126,7 +126,7 @@ if __name__ == "__main__":
         CommandHandler(BOT_COMMANDS["export"]["command"], export_spendings_handler),
         CommandHandler(BOT_COMMANDS["main_currency"]["command"], choose_main_currency_handler),
         CommandHandler(BOT_COMMANDS["settings"]["command"], settings_handler),
-        
+
         # Settings menu handlers
         CallbackQueryHandler(handle_settings_action, pattern=r"^settings_action:"),
         CallbackQueryHandler(handle_custom_input_request, pattern=r"^settings_custom:"),
