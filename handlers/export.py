@@ -14,7 +14,7 @@ async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT
     output = None
 
     try:
-        # Get all spendings
+        # Get all spendings as Spending objects
         spendings = await db.export_all_spendings(user_id)
         if not spendings:
             log_user_action(user_id, "attempted to export but has no spendings")
@@ -32,9 +32,11 @@ async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT
         headers = ["Description", "Amount", "Currency", "Category", "Date"]
         writer.writerow(headers)
 
-        # Write data
+        # Write data from Spending objects
         for spending in spendings:
-            writer.writerow(spending)
+            writer.writerow(
+                [spending.description, spending.amount, spending.currency, spending.category, spending.date]
+            )
 
         # Prepare file for sending
         output.seek(0)

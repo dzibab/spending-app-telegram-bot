@@ -422,21 +422,22 @@ class Database:
             logger.error(f"Error removing spending: {e}")
             return False
 
-    async def export_all_spendings(self, user_id: int) -> list[tuple[str, float, str, str, str]]:
+    async def export_all_spendings(self, user_id: int) -> list[Spending]:
         """Export all spendings for a user."""
         logger.debug(f"Exporting all spendings for user {user_id}")
         try:
             async with self.connection() as cursor:
                 await cursor.execute(
                     """
-                    SELECT description, amount, currency, category, date
+                    SELECT *
                     FROM spendings
                     WHERE user_id = ?
                     ORDER BY date DESC, id DESC
                 """,
                     (user_id,),
                 )
-                spendings = await cursor.fetchall()
+                rows = await cursor.fetchall()
+                spendings = [Spending.from_row(tuple(row)) for row in rows]
                 logger.debug(f"Exported {len(spendings)} spendings")
                 return spendings
         except Exception as e:
@@ -456,16 +457,14 @@ class Database:
             logger.error(f"Error fetching spendings count: {e}")
             return 0
 
-    async def get_paginated_spendings(
-        self, user_id: int, offset: int = 0, limit: int = 10
-    ) -> list[tuple[int, str, float, str, str, str]]:
+    async def get_paginated_spendings(self, user_id: int, offset: int = 0, limit: int = 10) -> list[Spending]:
         """Get paginated spendings for a user."""
         logger.debug(f"Fetching paginated spendings for user {user_id}, offset {offset}, limit {limit}")
         try:
             async with self.connection() as cursor:
                 await cursor.execute(
                     """
-                    SELECT id, description, amount, currency, category, date
+                    SELECT *
                     FROM spendings
                     WHERE user_id = ?
                     ORDER BY date DESC, id DESC
@@ -473,7 +472,8 @@ class Database:
                 """,
                     (user_id, limit, offset),
                 )
-                spendings = await cursor.fetchall()
+                rows = await cursor.fetchall()
+                spendings = [Spending.from_row(tuple(row)) for row in rows]
                 logger.debug(f"Retrieved {len(spendings)} spendings")
                 return spendings
         except Exception as e:
@@ -482,7 +482,7 @@ class Database:
 
     async def search_spendings(
         self, user_id: int, query: str = None, amount: float = None, offset: int = 0, limit: int = 10
-    ) -> list[tuple[int, str, float, str, str, str]]:
+    ) -> list[Spending]:
         """Search spendings by description or amount.
 
         Args:
@@ -493,14 +493,14 @@ class Database:
             limit: Number of items per page
 
         Returns:
-            List of tuples containing (id, description, amount, currency, category, date)
+            List of Spending objects matching the search criteria
         """
         logger.debug(f"Searching spendings for user {user_id}")
         try:
             async with self.connection() as cursor:
                 params = [user_id]
                 sql = """
-                    SELECT id, description, amount, currency, category, date
+                    SELECT *
                     FROM spendings
                     WHERE user_id = ?
                 """
@@ -517,9 +517,10 @@ class Database:
                 params.extend([limit, offset])
 
                 await cursor.execute(sql, params)
-                results = await cursor.fetchall()
-                logger.debug(f"Found {len(results)} matching spendings")
-                return results
+                rows = await cursor.fetchall()
+                spendings = [Spending.from_row(tuple(row)) for row in rows]
+                logger.debug(f"Found {len(spendings)} matching spendings")
+                return spendings
         except Exception as e:
             logger.error(f"Error searching spendings: {e}")
             return []

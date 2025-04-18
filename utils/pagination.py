@@ -28,16 +28,27 @@ def get_current_page_from_markup(reply_markup: InlineKeyboardMarkup) -> int:
     return 0  # Default to first page if not found
 
 
-def format_spending_button_text(spending_tuple) -> str:
+def format_spending_button_text(spending) -> str:
     """Format the button text for a spending entry.
 
     Args:
-        spending_tuple: Tuple containing (id, description, amount, currency, category, date)
+        spending: A Spending object or tuple containing spending details
 
     Returns:
         Formatted button text
     """
-    _, desc, amount, currency, cat, dt = spending_tuple
+    # Support both Spending objects and tuples for backward compatibility
+    if hasattr(spending, "id"):
+        # It's a Spending object
+        desc = spending.description
+        amount = spending.amount
+        currency = spending.currency
+        cat = spending.category
+        dt = spending.date
+    else:
+        # It's a tuple (id, description, amount, currency, category, date)
+        _, desc, amount, currency, cat, dt = spending
+
     button_text = f"{dt} | {amount} {currency} | {cat}"
     if desc:
         button_text += f" | {desc[:20]}"  # Truncate long descriptions

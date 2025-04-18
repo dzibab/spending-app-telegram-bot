@@ -41,9 +41,10 @@ async def show_spendings_page(update: Update, user_id: int, page: int = 0):
 
     # Create spending buttons
     keyboard = []
-    for spending_row in rows:
-        spending_id = spending_row[0]
-        button_text = format_spending_button_text(spending_row)
+    for spending in rows:
+        # Access fields as properties of the Spending object
+        spending_id = spending.id
+        button_text = format_spending_button_text(spending)
         keyboard.append([InlineKeyboardButton(button_text, callback_data=f"list_detail:{spending_id}")])
 
     # Add pagination buttons
