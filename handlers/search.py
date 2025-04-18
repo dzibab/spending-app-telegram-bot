@@ -7,10 +7,12 @@ from handlers.common import cancel, log_user_action
 from utils.logging import logger
 from utils.pagination import (
     create_pagination_buttons,
+    get_current_page_from_markup,
+)
+from utils.spending_actions import handle_delete_spending
+from utils.ui_helpers import (
     format_spending_button_text,
     format_spending_details,
-    get_current_page_from_markup,
-    handle_delete_spending,
     handle_no_results,
 )
 

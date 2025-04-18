@@ -116,7 +116,6 @@ if __name__ == "__main__":
 
     # Define handlers in a compact way
     handlers = [
-
         # Standard command handlers
         CommandHandler(BOT_COMMANDS["start"]["command"], start_handler),
         CommandHandler(BOT_COMMANDS["list"]["command"], list_spendings_handler),
@@ -126,7 +125,6 @@ if __name__ == "__main__":
         CommandHandler(BOT_COMMANDS["export"]["command"], export_spendings_handler),
         CommandHandler(BOT_COMMANDS["main_currency"]["command"], choose_main_currency_handler),
         CommandHandler(BOT_COMMANDS["settings"]["command"], settings_handler),
-
         # Settings menu handlers
         CallbackQueryHandler(handle_settings_action, pattern=r"^settings_action:"),
         CallbackQueryHandler(handle_custom_input_request, pattern=r"^settings_custom:"),
@@ -136,7 +134,6 @@ if __name__ == "__main__":
         CallbackQueryHandler(handle_set_main_currency, pattern=r"^settings_set_main_currency:"),
         CallbackQueryHandler(handle_add_category, pattern=r"^settings_add_category:"),
         CallbackQueryHandler(handle_remove_category, pattern=r"^settings_remove_category:"),
-
         # Original handlers
         CallbackQueryHandler(handle_report_callback, pattern=r"^month:\d{2}:\d{4}$"),
         CallbackQueryHandler(handle_chart_callback, pattern=r"^chart:(bar|pie):\d{1,2}:\d{4}$"),
@@ -148,20 +145,17 @@ if __name__ == "__main__":
         CallbackQueryHandler(handle_settings_callback, pattern=r"^settings_section:"),
         CallbackQueryHandler(handle_settings_callback, pattern=r"^settings_back:"),
         CallbackQueryHandler(handle_settings_callback, pattern=r"^settings_cmd:"),
-
         # Export and import handlers
         CallbackQueryHandler(handle_export_callback, pattern=r"^export_range:"),
         CallbackQueryHandler(handle_export_callback, pattern=r"^export_back:"),
         CallbackQueryHandler(handle_import_cancel, pattern=r"^import_cancel"),
         CallbackQueryHandler(send_import_template, pattern=r"^import_template"),
-
         # Conversation handlers
         add_spending_conversation_handler,
         add_currency_conversation_handler,
         add_category_conversation_handler,
         search_conversation_handler,
         import_conversation_handler,
-
         # Add a handler for custom input text messages
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text_input),
         # CSV file upload handler - placed at the top for highest priority
