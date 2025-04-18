@@ -14,7 +14,7 @@ async def report_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /report command."""
     user_id = update.effective_user.id
     logger.info(f"User {user_id} requested spending report.")
-    rows = db.get_unique_month_year_combinations(user_id)
+    rows = await db.get_unique_month_year_combinations(user_id)
 
     if not rows:
         logger.info(f"No spendings found for user {user_id}.")
@@ -42,7 +42,7 @@ async def handle_report_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -
     month, year = int(month), int(year)
     logger.info(f"User {user_id} selected month: {query.data}.")
 
-    rows = db.get_spending_data_for_month(user_id, str(year), f"{month:02d}")
+    rows = await db.get_spending_data_for_month(user_id, str(year), f"{month:02d}")
     if not rows:
         await query.edit_message_text("📭 No spendings found for this month.")
         return
@@ -68,12 +68,12 @@ async def handle_chart_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) ->
     # Let user know we're working on their chart
     await query.edit_message_text("📊 Generating your chart, please wait...")
 
-    main_currency = db.get_user_main_currency(user_id)
+    main_currency = await db.get_user_main_currency(user_id)
     if not main_currency:
         await query.edit_message_text("❌ Set your main currency using /main_currency.")
         return
 
-    rows = db.get_spending_totals_by_category(user_id, str(year), f"{month:02d}")
+    rows = await db.get_spending_totals_by_category(user_id, str(year), f"{month:02d}")
     if not rows:
         await query.edit_message_text("📭 No spendings found for this month.")
         return

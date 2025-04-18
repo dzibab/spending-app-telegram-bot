@@ -14,7 +14,7 @@ async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT
 
     try:
         # Get all spendings
-        spendings = db.export_all_spendings(user_id)
+        spendings = await db.export_all_spendings(user_id)
         if not spendings:
             logger.info(f"No spendings found to export for user {user_id}")
             await update.message.reply_text("You don't have any spendings to export.")

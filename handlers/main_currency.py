@@ -11,7 +11,7 @@ async def choose_main_currency_handler(update: Update, _: ContextTypes.DEFAULT_T
 
     try:
         # Get user's currencies
-        currencies = db.get_user_currencies(user_id)
+        currencies = await db.get_user_currencies(user_id)
         if not currencies:
             logger.warning(f"No currencies found for user {user_id}")
             await update.message.reply_text(
@@ -20,7 +20,7 @@ async def choose_main_currency_handler(update: Update, _: ContextTypes.DEFAULT_T
             return
 
         logger.debug(f"Retrieved {len(currencies)} currencies for user {user_id}")
-        current_main = db.get_user_main_currency(user_id)
+        current_main = await db.get_user_main_currency(user_id)
         if current_main:
             logger.debug(f"Current main currency for user {user_id}: {current_main}")
 
@@ -47,7 +47,7 @@ async def handle_main_currency_callback(update: Update, _: ContextTypes.DEFAULT_
     logger.info(f"User {user_id} selected main currency: {currency}")
 
     try:
-        db.set_user_main_currency(user_id, currency)
+        await db.set_user_main_currency(user_id, currency)
         logger.info(f"Successfully set main currency to {currency} for user {user_id}")
         await query.edit_message_text(f"✅ Main currency set to {currency}")
 

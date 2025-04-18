@@ -37,15 +37,22 @@ async def post_init(application: Application) -> None:
     await application.bot.set_my_commands(commands)
     logger.info("Bot commands configured successfully")
 
+    # Initialize database tables
+    logger.info("Initializing database")
+    await db.create_tables()
+
+
+async def shutdown(_: Application) -> None:
+    """Close database connection when shutting down."""
+    logger.info("Closing database connection")
+    await db.close()
+
 
 if __name__ == "__main__":
     logger.info("Starting Spending Tracker Bot")
 
-    logger.info("Initializing database")
-    db.create_tables()
-
     logger.info("Building application")
-    app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
+    app = Application.builder().token(BOT_TOKEN).post_init(post_init).post_shutdown(shutdown).build()
 
     # Define handlers in a compact way
     handlers = [

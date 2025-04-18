@@ -52,7 +52,7 @@ async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Fetch user-specific currencies
         user_id = update.effective_user.id
-        currencies = db.get_user_currencies(user_id)
+        currencies = await db.get_user_currencies(user_id)
 
         # Create a keyboard with currency options
         keyboard = [[c] for c in currencies]
@@ -70,7 +70,7 @@ async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    currencies = db.get_user_currencies(user_id)
+    currencies = await db.get_user_currencies(user_id)
 
     currency = update.message.text.upper()
     if currency not in currencies:
@@ -84,7 +84,7 @@ async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["currency"] = currency
 
     # Fetch user-specific categories
-    categories = db.get_user_categories(user_id)
+    categories = await db.get_user_categories(user_id)
 
     # Add categories as buttons
     keyboard = [[category] for category in categories]
@@ -136,7 +136,7 @@ async def write_spending_to_db(update: Update, context: ContextTypes.DEFAULT_TYP
         category = context.user_data["category"]
         spend_date = context.user_data["date"]
 
-        db.add_spending(user_id, description, amount, currency, category, spend_date.isoformat())
+        await db.add_spending(user_id, description, amount, currency, category, spend_date.isoformat())
         logger.info(f"User {user_id} added spending: {amount} {currency} for {category} on {spend_date}.")
 
         await update.message.reply_text(

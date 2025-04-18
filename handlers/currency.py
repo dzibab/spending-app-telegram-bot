@@ -23,7 +23,7 @@ async def handle_currency_input(update: Update, _: CallbackContext):
         await update.message.reply_text("Invalid input. Please provide a valid 3-letter currency code (e.g., USD, EUR).")
         return CURRENCY_INPUT
 
-    success = db.add_currency_to_user(user_id, currency)
+    success = await db.add_currency_to_user(user_id, currency)
     if success:
         await update.message.reply_text(f"Currency {currency} has been successfully added!")
     else:
@@ -51,7 +51,7 @@ add_currency_conversation_handler = ConversationHandler(
 
 async def remove_currency_handler(update: Update, _: CallbackContext):
     user_id = update.effective_user.id
-    currencies = db.get_user_currencies(user_id)
+    currencies = await db.get_user_currencies(user_id)
 
     if not currencies:
         await update.message.reply_text("You don't have any currencies to remove.")
@@ -76,16 +76,16 @@ async def handle_remove_currency_callback(update: Update, _: CallbackContext):
     currency = data.split(":")[1]
 
     # Check if currency is set as main currency
-    current_main = db.get_user_main_currency(user_id)
+    current_main = await db.get_user_main_currency(user_id)
     if current_main == currency:
         try:
             # Remove from main_currency table
-            db.remove_user_main_currency(user_id)
+            await db.remove_user_main_currency(user_id)
             logger.info(f"Removed main currency {currency} for user {user_id}")
         except Exception as e:
             logger.error(f"Error removing main currency {currency} for user {user_id}: {e}")
 
-    success = db.remove_currency_from_user(user_id, currency)
+    success = await db.remove_currency_from_user(user_id, currency)
     if success:
         await query.edit_message_text(f"Currency {currency} has been successfully removed!")
     else:

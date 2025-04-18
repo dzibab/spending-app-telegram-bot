@@ -11,7 +11,7 @@ async def start_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
     logger.info(f"User {user_id} started the bot.")
 
     # Check if the user is new and populate default values
-    db.initialize_user_defaults(user_id)
+    await db.initialize_user_defaults(user_id)
 
     await update.message.reply_text(
         "👋 Welcome to the Spending Tracker Bot!\n"

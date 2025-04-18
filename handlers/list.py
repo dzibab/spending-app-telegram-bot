@@ -30,7 +30,7 @@ async def show_spendings_page(update: Update, user_id: int, page: int = 0):
     offset = page * ITEMS_PER_PAGE
 
     # Get total count for pagination
-    total_count = db.get_spendings_count(user_id)
+    total_count = await db.get_spendings_count(user_id)
     if total_count == 0:
         logger.info(f"No spendings found for user {user_id}.")
         if update.callback_query:
@@ -40,7 +40,7 @@ async def show_spendings_page(update: Update, user_id: int, page: int = 0):
         return
 
     # Get paginated data
-    rows = db.get_paginated_spendings(user_id, offset, ITEMS_PER_PAGE)
+    rows = await db.get_paginated_spendings(user_id, offset, ITEMS_PER_PAGE)
     total_pages = (total_count - 1) // ITEMS_PER_PAGE + 1
 
     # If current page is beyond total pages, adjust to last available page
@@ -49,7 +49,7 @@ async def show_spendings_page(update: Update, user_id: int, page: int = 0):
         offset = page * ITEMS_PER_PAGE
         # Refetch data with adjusted page
         if total_count > 0:
-            rows = db.get_paginated_spendings(user_id, offset, ITEMS_PER_PAGE)
+            rows = await db.get_paginated_spendings(user_id, offset, ITEMS_PER_PAGE)
             total_pages = (total_count - 1) // ITEMS_PER_PAGE + 1
 
     # Create spending buttons
@@ -103,7 +103,7 @@ async def handle_list_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
         # Get the current page by finding the highlighted button in pagination
         current_page = get_current_page_from_markup(query.message.reply_markup)
 
-        spending = db.get_spending_by_id(user_id, spending_id)
+        spending = await db.get_spending_by_id(user_id, spending_id)
 
         if spending:
             # Show detailed view with back and delete buttons
@@ -134,11 +134,12 @@ async def handle_list_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
         logger.info(f"User {user_id} deleting spending {spending_id} from details view")
 
         # Delete the spending
-        if db.remove_spending(user_id, spending_id):
+        success = await db.remove_spending(user_id, spending_id)
+        if success:
             logger.info(f"Successfully removed spending {spending_id} for user {user_id}")
 
             # Calculate total count after deletion to see if we need to adjust the page
-            total_count = db.get_spendings_count(user_id)
+            total_count = await db.get_spendings_count(user_id)
             items_on_current_page = total_count - (current_page * ITEMS_PER_PAGE)
 
             # If this was the last item on the current page and we're not on the first page,

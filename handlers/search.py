@@ -16,7 +16,7 @@ async def show_search_results(update: Update, user_id: int, query: str = None, a
     offset = page * ITEMS_PER_PAGE
 
     # Get total count for pagination
-    total_count = db.count_search_results(user_id, query, amount)
+    total_count = await db.count_search_results(user_id, query, amount)
     if total_count == 0:
         logger.info(f"No matching spendings found for user {user_id}")
         message = "No spendings found"
@@ -32,7 +32,7 @@ async def show_search_results(update: Update, user_id: int, query: str = None, a
         return
 
     # Get paginated search results
-    rows = db.search_spendings(user_id, query, amount, offset, ITEMS_PER_PAGE)
+    rows = await db.search_spendings(user_id, query, amount, offset, ITEMS_PER_PAGE)
     total_pages = (total_count - 1) // ITEMS_PER_PAGE + 1
 
     # Create spending buttons
@@ -50,7 +50,7 @@ async def show_search_results(update: Update, user_id: int, query: str = None, a
     keyboard.append(create_pagination_buttons(page, total_pages, "search_page"))
 
     reply_markup = InlineKeyboardMarkup(keyboard)
-    message = f"Search results"
+    message = "Search results"
     if query:
         message += f" for '{query}'"
     if amount is not None:
@@ -122,23 +122,16 @@ async def handle_search_callback(update: Update, context: ContextTypes.DEFAULT_T
         # Handle spending details view
         spending_id = int(data.split(":")[1])
         # Get spending details from database
-        with db.get_connection() as conn:
-            cursor = conn.execute("""
-                SELECT description, amount, currency, category, date
-                FROM spendings
-                WHERE id = ? AND user_id = ?
-            """, (spending_id, user_id))
-            spending = cursor.fetchone()
+        spending = await db.get_spending_by_id(user_id, spending_id)
 
         if spending:
-            desc, amount, currency, category, date = spending
             # Show detailed view with a back button
             text = (
                 f"📝 Spending Details:\n\n"
-                f"Date: {date}\n"
-                f"Amount: {amount} {currency}\n"
-                f"Category: {category}\n"
-                f"Description: {desc or 'No description'}"
+                f"Date: {spending.date}\n"
+                f"Amount: {spending.amount} {spending.currency}\n"
+                f"Category: {spending.category}\n"
+                f"Description: {spending.description or 'No description'}"
             )
             # Add a back button that returns to search
             keyboard = [[InlineKeyboardButton(
