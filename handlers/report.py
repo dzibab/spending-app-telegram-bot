@@ -1,12 +1,12 @@
 from datetime import datetime
 
 import pandas as pd
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from db import db
-from utils.logging import logger
 from utils.exchange import convert_currency
+from utils.logging import logger
 from utils.plotting import generate_plot
 
 

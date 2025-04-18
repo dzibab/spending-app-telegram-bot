@@ -1,10 +1,10 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from constants import ITEMS_PER_PAGE
 from db import db
 from utils.logging import logger
 from utils.plotting import create_pagination_buttons
-from constants import ITEMS_PER_PAGE
 
 
 def get_current_page_from_markup(reply_markup: InlineKeyboardMarkup) -> int:

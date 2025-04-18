@@ -1,6 +1,5 @@
 from datetime import datetime
 from io import BytesIO
-from typing import Optional, List
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -30,7 +29,7 @@ def plot_bar_chart(data: pd.DataFrame, main_currency: str, month: int, year: int
 
     # Add percentage labels and total spending on top of each bar
     total_spending = data['total'].sum()
-    for bar, (category, total) in zip(bars, data.itertuples(index=False)):
+    for bar, (category, total) in zip(bars, data.itertuples(index=False), strict=False):
         percentage = (total / total_spending) * 100
         plt.text(
             bar.get_x() + bar.get_width() / 2,
@@ -100,7 +99,7 @@ def generate_plot(
     month: int,
     year: int,
     chart_type: str = "bar"
-) -> Optional[BytesIO]:
+) -> BytesIO | None:
     """Generate a plot visualization of spending data.
 
     Args:
@@ -138,7 +137,7 @@ def generate_plot(
         raise
 
 
-def create_pagination_buttons(current_page: int, total_pages: int, callback_prefix: str) -> List[InlineKeyboardButton]:
+def create_pagination_buttons(current_page: int, total_pages: int, callback_prefix: str) -> list[InlineKeyboardButton]:
     """Create pagination buttons with first and last pages always visible.
     Current page is highlighted with dashes and is non-clickable.
     This function works with ITEMS_PER_PAGE constant from constants.py

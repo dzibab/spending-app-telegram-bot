@@ -1,18 +1,17 @@
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 import aiosqlite
 
-from constants import DEFAULT_CURRENCIES, DEFAULT_CATEGORIES
+from constants import DEFAULT_CATEGORIES, DEFAULT_CURRENCIES
 from utils.logging import logger
 
 
 @dataclass
 class Spending:
     """Represents a spending record."""
-    id: Optional[int]
+    id: int | None
     user_id: int
     description: str
     amount: float
@@ -198,7 +197,7 @@ class Database:
             logger.error(f"Error initializing defaults for user {user_id}: {e}")
             raise
 
-    async def get_user_currencies(self, user_id: int) -> List[str]:
+    async def get_user_currencies(self, user_id: int) -> list[str]:
         """Get list of currencies for a user."""
         logger.debug(f"Fetching currencies for user {user_id}")
         try:
@@ -215,7 +214,7 @@ class Database:
             logger.error(f"Error fetching currencies for user {user_id}: {e}")
             return []
 
-    async def get_user_categories(self, user_id: int) -> List[str]:
+    async def get_user_categories(self, user_id: int) -> list[str]:
         """Get list of categories for a user."""
         logger.debug(f"Fetching categories for user {user_id}")
         try:
@@ -301,7 +300,7 @@ class Database:
             logger.error(f"Error removing category {category} for user {user_id}: {e}")
             return False
 
-    async def get_user_main_currency(self, user_id: int) -> Optional[str]:
+    async def get_user_main_currency(self, user_id: int) -> str | None:
         """Get main currency for a user."""
         logger.debug(f"Fetching main currency for user {user_id}")
         try:
@@ -344,7 +343,7 @@ class Database:
             logger.error(f"Error removing main currency for user {user_id}: {e}")
             raise
 
-    async def get_unique_month_year_combinations(self, user_id: int) -> List[Tuple[str, str]]:
+    async def get_unique_month_year_combinations(self, user_id: int) -> list[tuple[str, str]]:
         """Get unique month-year combinations for a user's spendings."""
         logger.debug(f"Fetching unique month-year combinations for user {user_id}")
         query = """
@@ -365,7 +364,7 @@ class Database:
 
     async def get_spending_data_for_month(
         self, user_id: int, year: str, month: str
-    ) -> List[Tuple[str, float, str]]:
+    ) -> list[tuple[str, float, str]]:
         """Get spending data for a specific month."""
         logger.debug(f"Fetching spending data for user {user_id} for {month}/{year}")
         query = """
@@ -386,7 +385,7 @@ class Database:
 
     async def get_spending_totals_by_category(
         self, user_id: int, year: str, month: str
-    ) -> List[Tuple[str, float, str]]:
+    ) -> list[tuple[str, float, str]]:
         """Get spending totals grouped by category for a specific month."""
         logger.debug(f"Fetching spending totals by category for user {user_id} for {month}/{year}")
         try:
@@ -417,7 +416,7 @@ class Database:
                         user_id, description, amount, currency, category, date
                     ) VALUES (?, ?, ?, ?, ?, ?)
                 """, (user_id, description, amount, currency, category, spend_date))
-                logger.info(f"Spending added successfully")
+                logger.info("Spending added successfully")
         except Exception as e:
             logger.error(f"Error adding spending: {e}")
             raise
@@ -443,7 +442,7 @@ class Database:
 
     async def export_all_spendings(
         self, user_id: int
-    ) -> List[Tuple[str, float, str, str, str]]:
+    ) -> list[tuple[str, float, str, str, str]]:
         """Export all spendings for a user."""
         logger.debug(f"Exporting all spendings for user {user_id}")
         try:
@@ -479,7 +478,7 @@ class Database:
 
     async def get_paginated_spendings(
         self, user_id: int, offset: int = 0, limit: int = 10
-    ) -> List[Tuple[int, str, float, str, str, str]]:
+    ) -> list[tuple[int, str, float, str, str, str]]:
         """Get paginated spendings for a user."""
         logger.debug(f"Fetching paginated spendings for user {user_id}, offset {offset}, limit {limit}")
         try:
@@ -501,7 +500,7 @@ class Database:
     async def search_spendings(
         self, user_id: int, query: str = None, amount: float = None,
         offset: int = 0, limit: int = 10
-    ) -> List[Tuple[int, str, float, str, str, str]]:
+    ) -> list[tuple[int, str, float, str, str, str]]:
         """Search spendings by description or amount.
 
         Args:
@@ -580,7 +579,7 @@ class Database:
 
     async def get_spending_by_id(
         self, user_id: int, spending_id: int
-    ) -> Optional[Spending]:
+    ) -> Spending | None:
         """Get details of a specific spending record."""
         logger.debug(f"Fetching details for spending ID {spending_id} for user {user_id}")
         try:

@@ -1,5 +1,4 @@
-from datetime import datetime, timezone, date
-from typing import Dict, Optional
+from datetime import date, datetime, timezone
 
 import requests
 
@@ -11,9 +10,9 @@ class ExchangeRateCache:
     """Cache for exchange rates to minimize API calls."""
 
     def __init__(self):
-        self._cache: Dict[str, Dict[str, any]] = {}
+        self._cache: dict[str, dict[str, any]] = {}
 
-    def get_rates(self, currency: str, current_date: date) -> Optional[Dict[str, float]]:
+    def get_rates(self, currency: str, current_date: date) -> dict[str, float] | None:
         """Get cached exchange rates for a currency if they exist and are from today."""
         cache_entry = self._cache.get(currency.upper())
         if cache_entry and cache_entry["date"] == current_date:
@@ -21,7 +20,7 @@ class ExchangeRateCache:
             return cache_entry["rates"]
         return None
 
-    def set_rates(self, currency: str, rates: Dict[str, float], current_date: date) -> None:
+    def set_rates(self, currency: str, rates: dict[str, float], current_date: date) -> None:
         """Cache exchange rates for a currency."""
         self._cache[currency.upper()] = {
             "date": current_date,
@@ -34,7 +33,7 @@ class ExchangeRateCache:
 _rates_cache = ExchangeRateCache()
 
 
-def fetch_rates(main_currency: str) -> Dict[str, float]:
+def fetch_rates(main_currency: str) -> dict[str, float]:
     """Fetch current exchange rates for a currency.
 
     Args:

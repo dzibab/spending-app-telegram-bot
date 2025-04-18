@@ -1,11 +1,10 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import CommandHandler, ContextTypes, ConversationHandler, MessageHandler, filters
 
+from constants import BOT_COMMANDS, ITEMS_PER_PAGE
 from db import db
 from utils.logging import logger
 from utils.plotting import create_pagination_buttons
-from constants import BOT_COMMANDS, ITEMS_PER_PAGE
-
 
 # Define states for the conversation
 SEARCH_INPUT = range(1)

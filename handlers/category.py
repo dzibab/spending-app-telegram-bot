@@ -1,9 +1,8 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackContext, ConversationHandler, CommandHandler, MessageHandler, filters
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import CallbackContext, CommandHandler, ConversationHandler, MessageHandler, filters
 
-from db import db
 from constants import BOT_COMMANDS
-
+from db import db
 
 # Define states for the conversation
 CATEGORY_INPUT = range(1)

@@ -10,4 +10,56 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "python-telegram-bot>=22.0",
     "requests>=2.32.3",
+    "ruff>=0.11.6",
 ]
+
+[tool.ruff]
+# Enable flake8-bugbear (`B`) rules.
+lint.select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "B",  # flake8-bugbear
+    "I",  # isort
+    "N",  # pep8-naming
+    "UP",  # pyupgrade
+    "RUF",  # Ruff-specific rules
+    "TRY",  # try-except
+    "S",  # security
+]
+
+# Excluded directories
+lint.exclude = [
+    ".git",
+    ".ruff_cache",
+    "__pycache__",
+    "venv",
+    ".venv",
+]
+
+# Line length is set to 100 characters
+line-length = 120
+
+# Target Python version
+target-version = "py310"
+
+# Allow unused variables that start with an underscore
+lint.ignore = [
+    "E501",  # Line too long (handled by formatter)
+    "B008",  # Function calls in default parameter
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Allow for common test-file patterns
+"**/*test*.py" = ["S101"]  # Allow assert statements in tests
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "double"
+inline-quotes = "double"
+
+[tool.ruff.format]
+# Use double quotes for strings
+quote-style = "double"
+# Indent with 4 spaces
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

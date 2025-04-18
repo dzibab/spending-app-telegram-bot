@@ -1,28 +1,28 @@
 from telegram import BotCommand
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 
 from config import BOT_TOKEN
 from constants import BOT_COMMANDS
 from db import db
-from handlers.start import start_handler
+from handlers.category import (
+    add_category_conversation_handler,
+    handle_remove_category_callback,
+    remove_category_handler,
+)
+from handlers.currency import (
+    add_currency_conversation_handler,
+    handle_remove_currency_callback,
+    remove_currency_handler,
+)
+from handlers.export import export_spendings_handler
+from handlers.list import handle_list_callback, list_spendings_handler
+from handlers.main_currency import choose_main_currency_handler, handle_main_currency_callback
+from handlers.report import handle_chart_callback, handle_report_callback, report_handler
+from handlers.search import handle_search_callback, search_conversation_handler
 from handlers.spending import (
     add_spending_conversation_handler,
 )
-from handlers.list import list_spendings_handler, handle_list_callback
-from handlers.report import report_handler, handle_report_callback, handle_chart_callback
-from handlers.export import export_spendings_handler
-from handlers.currency import (
-    add_currency_conversation_handler,
-    remove_currency_handler,
-    handle_remove_currency_callback,
-    )
-from handlers.category import (
-    add_category_conversation_handler,
-    remove_category_handler,
-    handle_remove_category_callback,
-    )
-from handlers.main_currency import choose_main_currency_handler, handle_main_currency_callback
-from handlers.search import search_conversation_handler, handle_search_callback
+from handlers.start import start_handler
 from utils.logging import logger
 
 

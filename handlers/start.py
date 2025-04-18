@@ -1,8 +1,8 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from db import db
 from constants import BOT_USAGE_INSTRUCTIONS
+from db import db
 from utils.logging import logger
 
 

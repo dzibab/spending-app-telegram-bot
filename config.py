@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 
 from utils.logging import logger
 
-
 logger.info("Loading environment variables")
 load_dotenv()
 
