@@ -7,8 +7,6 @@ from db import db
 from handlers.start import start_handler
 from handlers.spending import (
     add_spending_conversation_handler,
-    remove_spending_handler,
-    handle_remove_callback
 )
 from handlers.list import list_spendings_handler, handle_list_callback
 from handlers.report import report_handler, handle_report_callback, handle_chart_callback
@@ -33,7 +31,8 @@ async def post_init(application: Application) -> None:
     logger.info("Setting up bot commands")
     commands = [
         BotCommand(cmd_info["command"], cmd_info["description"])
-        for cmd_info in BOT_COMMANDS.values() if cmd_info["command"] != "start"  # Excluding /start
+        for cmd_info in BOT_COMMANDS.values()
+        if cmd_info["command"] != "start"  # Excluding /start
     ]
     await application.bot.set_my_commands(commands)
     logger.info("Bot commands configured successfully")
@@ -51,7 +50,6 @@ if __name__ == "__main__":
     # Define handlers in a compact way
     handlers = [
         CommandHandler(BOT_COMMANDS["start"]["command"], start_handler),
-        CommandHandler(BOT_COMMANDS["remove_spending"]["command"], remove_spending_handler),
         CommandHandler(BOT_COMMANDS["list"]["command"], list_spendings_handler),
         CommandHandler(BOT_COMMANDS["report"]["command"], report_handler),
         CommandHandler(BOT_COMMANDS["remove_currency"]["command"], remove_currency_handler),
@@ -63,8 +61,7 @@ if __name__ == "__main__":
         CallbackQueryHandler(handle_remove_currency_callback, pattern=r"^remove_currency:"),
         CallbackQueryHandler(handle_remove_category_callback, pattern=r"^remove_category:"),
         CallbackQueryHandler(handle_main_currency_callback, pattern=r"^main_currency:"),
-        CallbackQueryHandler(handle_list_callback, pattern=r"^list_(page|detail):\d+$"),
-        CallbackQueryHandler(handle_remove_callback, pattern=r"^remove(_page)?:\d+$"),
+        CallbackQueryHandler(handle_list_callback, pattern=r"^list_(page|detail|delete):\d+"),
         CallbackQueryHandler(handle_search_callback, pattern=r"^search_(page|detail|back)"),
         add_spending_conversation_handler,
         add_currency_conversation_handler,

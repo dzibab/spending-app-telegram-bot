@@ -43,6 +43,15 @@ async def show_spendings_page(update: Update, user_id: int, page: int = 0):
     rows = db.get_paginated_spendings(user_id, offset, ITEMS_PER_PAGE)
     total_pages = (total_count - 1) // ITEMS_PER_PAGE + 1
 
+    # If current page is beyond total pages, adjust to last available page
+    if page >= total_pages:
+        page = max(0, total_pages - 1)
+        offset = page * ITEMS_PER_PAGE
+        # Refetch data with adjusted page
+        if total_count > 0:
+            rows = db.get_paginated_spendings(user_id, offset, ITEMS_PER_PAGE)
+            total_pages = (total_count - 1) // ITEMS_PER_PAGE + 1
+
     # Create spending buttons
     keyboard = []
     for spending_id, desc, amount, currency, cat, dt in rows:
@@ -97,8 +106,7 @@ async def handle_list_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
         spending = db.get_spending_by_id(user_id, spending_id)
 
         if spending:
-            # desc, amount, currency, category, date = spending
-            # Show detailed view with a back button that returns to the last viewed page
+            # Show detailed view with back and delete buttons
             text = (
                 f"📝 Spending Details:\n\n"
                 f"Date: {spending.date}\n"
@@ -106,14 +114,47 @@ async def handle_list_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
                 f"Category: {spending.category}\n"
                 f"Description: {spending.description or 'No description'}"
             )
-            # Add a back button that returns to the last viewed page
+            # Add both back and delete buttons
             keyboard = [
                 [InlineKeyboardButton("« Back to list", callback_data=f"list_page:{current_page}")],
-                # [InlineKeyboardButton("❌ Delete", callback_data=f"remove:{spending_id}")]
-                ]
+                [InlineKeyboardButton("🗑️ Delete", callback_data=f"list_delete:{spending_id}:{current_page}")]
+            ]
             await query.edit_message_text(
                 text=text,
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
         else:
             await query.edit_message_text("❌ Spending not found.")
+    elif data.startswith("list_delete:"):
+        # Handle deletion of spending from detail view
+        parts = data.split(":")
+        spending_id = int(parts[1])
+        current_page = int(parts[2])
+
+        logger.info(f"User {user_id} deleting spending {spending_id} from details view")
+
+        # Delete the spending
+        if db.remove_spending(user_id, spending_id):
+            logger.info(f"Successfully removed spending {spending_id} for user {user_id}")
+
+            # Calculate total count after deletion to see if we need to adjust the page
+            total_count = db.get_spendings_count(user_id)
+            items_on_current_page = total_count - (current_page * ITEMS_PER_PAGE)
+
+            # If this was the last item on the current page and we're not on the first page,
+            # move to the previous page
+            if items_on_current_page <= 0 and current_page > 0:
+                current_page -= 1
+
+            # Show confirmation and return to the list
+            await query.edit_message_text("✅ Spending deleted successfully!")
+            # Small delay to show the confirmation message
+            await show_spendings_page(update, user_id, current_page)
+        else:
+            logger.warning(f"Failed to remove spending {spending_id} for user {user_id}")
+            await query.edit_message_text(
+                "❌ Failed to delete spending. It might have been already removed.",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("« Back to list", callback_data=f"list_page:{current_page}")
+                ]])
+            )

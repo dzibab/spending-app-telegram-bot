@@ -14,11 +14,6 @@ BOT_COMMANDS = {
         "description": "Add a spending",
         "help": "Record a new expense"
     },
-    "remove_spending": {
-        "command": "remove_spending",
-        "description": "Remove a spending",
-        "help": "Delete an expense by its ID"
-    },
     "search_spending": {
         "command": "search",
         "description": "Search spendings",
@@ -47,7 +42,7 @@ BOT_COMMANDS = {
     "list": {
         "command": "list",
         "description": "List spendings",
-        "help": "View your last 10 expenses"
+        "help": "View and manage your spendings, including deletion"
     },
     "report": {
         "command": "report",

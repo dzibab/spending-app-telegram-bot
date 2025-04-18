@@ -12,8 +12,8 @@
 2. Available commands:
     - `/start`: Start the bot and initialize your account.
     - `/add_spending`: Record a new expense.
-    - `/remove_spending <id>`: Delete an expense by its ID.
-    - `/list`: View your last 10 expenses.
+    - `/list`: View your spendings with pagination, see details, and delete them.
+    - `/search`: Search for specific spendings by description or amount.
     - `/report`: View spending reports and charts.
     - `/export`: Download your spendings as a CSV file.
     - `/main_currency`: Set your main currency for reports.
