@@ -4,28 +4,17 @@ from telegram.ext import CommandHandler, ContextTypes, ConversationHandler, Mess
 from constants import BOT_COMMANDS, ITEMS_PER_PAGE
 from db import db
 from utils.logging import logger
+from utils.pagination import (
+    format_spending_button_text,
+    format_spending_details,
+    get_current_page_from_markup,
+    handle_delete_spending,
+    handle_no_results,
+)
 from utils.plotting import create_pagination_buttons
 
 # Define states for the conversation
 SEARCH_INPUT = range(1)
-
-
-def get_current_page_from_markup(reply_markup: InlineKeyboardMarkup) -> int:
-    """Extract current page number from the message markup by finding the highlighted button."""
-    if not reply_markup or not reply_markup.inline_keyboard:
-        return 0
-
-    # Get the pagination row (last row)
-    pagination_row = reply_markup.inline_keyboard[-1]
-
-    # Find the button that's highlighted with dashes (current page)
-    for button in pagination_row:
-        # Current page button text is formatted like "-N-"
-        if button.text.startswith("-") and button.text.endswith("-"):
-            # Extract the number from "-N-" format
-            return int(button.text.strip("-")) - 1  # Convert to 0-based
-
-    return 0  # Default to first page if not found
 
 
 async def show_search_results(update: Update, user_id: int, query: str = None, amount: float = None, page: int = 0):
@@ -42,10 +31,7 @@ async def show_search_results(update: Update, user_id: int, query: str = None, a
         if amount is not None:
             message += f" with amount {amount}"
 
-        if update.callback_query:
-            await update.callback_query.edit_message_text(f"📭 {message}.")
-        else:
-            await update.message.reply_text(f"📭 {message}.")
+        await handle_no_results(update, message)
         return
 
     # Get paginated search results
@@ -54,10 +40,9 @@ async def show_search_results(update: Update, user_id: int, query: str = None, a
 
     # Create spending buttons
     keyboard = []
-    for spending_id, desc, amount, currency, cat, dt in rows:
-        button_text = f"{dt} | {amount} {currency} | {cat}"
-        if desc:
-            button_text += f" | {desc[:20]}"  # Truncate long descriptions
+    for spending_row in rows:
+        spending_id = spending_row[0]
+        button_text = format_spending_button_text(spending_row)
         keyboard.append([InlineKeyboardButton(button_text, callback_data=f"search_detail:{spending_id}")])
 
     # Add pagination buttons
@@ -136,13 +121,7 @@ async def handle_search_callback(update: Update, context: ContextTypes.DEFAULT_T
 
         if spending:
             # Show detailed view with back and delete buttons
-            text = (
-                f"📝 Spending Details:\n\n"
-                f"Date: {spending.date}\n"
-                f"Amount: {spending.amount} {spending.currency}\n"
-                f"Category: {spending.category}\n"
-                f"Description: {spending.description or 'No description'}"
-            )
+            text = await format_spending_details(spending)
             # Add both back and delete buttons
             keyboard = [
                 [InlineKeyboardButton("« Back to search results", callback_data=f"search_page:{current_page}")],
@@ -157,38 +136,23 @@ async def handle_search_callback(update: Update, context: ContextTypes.DEFAULT_T
         spending_id = int(parts[1])
         current_page = int(parts[2])
 
-        logger.info(f"User {user_id} deleting spending {spending_id} from search details view")
+        # Get current search parameters from user_data
+        search_query = context.user_data.get("search_query")
+        search_amount = context.user_data.get("search_amount")
 
-        # Delete the spending
-        success = await db.remove_spending(user_id, spending_id)
-        if success:
-            logger.info(f"Successfully removed spending {spending_id} for user {user_id}")
-
-            # Calculate total count after deletion to see if we need to adjust the page
-            total_count = await db.count_search_results(
-                user_id, context.user_data.get("search_query"), context.user_data.get("search_amount")
-            )
-            items_on_current_page = total_count - (current_page * ITEMS_PER_PAGE)
-
-            # If this was the last item on the current page and we're not on the first page,
-            # move to the previous page
-            if items_on_current_page <= 0 and current_page > 0:
-                current_page -= 1
-
-            # Show confirmation and return to the search results
-            await query.edit_message_text("✅ Spending deleted successfully!")
-            # Return to search results with potentially adjusted page
-            await show_search_results(
-                update, user_id, context.user_data.get("search_query"), context.user_data.get("search_amount"), current_page
-            )
-        else:
-            logger.warning(f"Failed to remove spending {spending_id} for user {user_id}")
-            await query.edit_message_text(
-                "❌ Failed to delete spending. It might have been already removed.",
-                reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton("« Back to search results", callback_data=f"search_page:{current_page}")]]
-                ),
-            )
+        # Use the common deletion handler with search-specific parameters
+        await handle_delete_spending(
+            update=update,
+            context=context,
+            user_id=user_id,
+            spending_id=spending_id,
+            current_page=current_page,
+            return_callback_prefix="search_page",
+            get_item_count_fn=db.count_search_results,
+            show_results_fn=show_search_results,
+            query=search_query,
+            amount=search_amount,
+        )
     elif data == "search_back":
         # For backward compatibility, handle the old "search_back" callback
         await show_search_results(
