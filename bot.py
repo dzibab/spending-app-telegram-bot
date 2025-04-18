@@ -116,8 +116,7 @@ if __name__ == "__main__":
 
     # Define handlers in a compact way
     handlers = [
-        # CSV file upload handler - placed at the top for highest priority
-        # MessageHandler(filters.Document.FileExtension("csv"), handle_csv_file_upload),
+
         # Standard command handlers
         CommandHandler(BOT_COMMANDS["start"]["command"], start_handler),
         CommandHandler(BOT_COMMANDS["list"]["command"], list_spendings_handler),
@@ -127,6 +126,7 @@ if __name__ == "__main__":
         CommandHandler(BOT_COMMANDS["export"]["command"], export_spendings_handler),
         CommandHandler(BOT_COMMANDS["main_currency"]["command"], choose_main_currency_handler),
         CommandHandler(BOT_COMMANDS["settings"]["command"], settings_handler),
+        
         # Settings menu handlers
         CallbackQueryHandler(handle_settings_action, pattern=r"^settings_action:"),
         CallbackQueryHandler(handle_custom_input_request, pattern=r"^settings_custom:"),
