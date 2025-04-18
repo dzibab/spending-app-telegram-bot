@@ -5,13 +5,13 @@ from constants import ITEMS_PER_PAGE
 from db import db
 from utils.logging import logger
 from utils.pagination import (
+    create_pagination_buttons,
     format_spending_button_text,
     format_spending_details,
     get_current_page_from_markup,
     handle_delete_spending,
     handle_no_results,
 )
-from utils.plotting import create_pagination_buttons
 
 
 async def show_spendings_page(update: Update, user_id: int, page: int = 0):
@@ -112,5 +112,5 @@ async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             current_page=current_page,
             return_callback_prefix="list_page",
             get_item_count_fn=db.get_spendings_count,
-            show_results_fn=show_spendings_page
+            show_results_fn=show_spendings_page,
         )

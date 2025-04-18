@@ -5,13 +5,13 @@ from constants import BOT_COMMANDS, ITEMS_PER_PAGE
 from db import db
 from utils.logging import logger
 from utils.pagination import (
+    create_pagination_buttons,
     format_spending_button_text,
     format_spending_details,
     get_current_page_from_markup,
     handle_delete_spending,
     handle_no_results,
 )
-from utils.plotting import create_pagination_buttons
 
 # Define states for the conversation
 SEARCH_INPUT = range(1)
