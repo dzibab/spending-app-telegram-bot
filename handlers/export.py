@@ -5,23 +5,23 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from db import db
-from utils.logging import logger
+from handlers.common import handle_db_error, log_user_action
 
 
 async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    logger.info(f"Processing export request for user {user_id}")
+    log_user_action(user_id, "requested to export spendings")
+    output = None
 
     try:
         # Get all spendings
         spendings = await db.export_all_spendings(user_id)
         if not spendings:
-            logger.info(f"No spendings found to export for user {user_id}")
+            log_user_action(user_id, "attempted to export but has no spendings")
             await update.message.reply_text("You don't have any spendings to export.")
             return
 
-        logger.debug(f"Retrieved {len(spendings)} spendings for export")
-
+        log_user_action(user_id, f"exporting {len(spendings)} spendings")
         await update.message.reply_text("Preparing your export...")
 
         # Create CSV in memory
@@ -31,7 +31,6 @@ async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT
         # Write header
         headers = ["Description", "Amount", "Currency", "Category", "Date"]
         writer.writerow(headers)
-        logger.debug("Created CSV file with headers")
 
         # Write data
         for spending in spendings:
@@ -39,7 +38,6 @@ async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT
 
         # Prepare file for sending
         output.seek(0)
-        logger.debug(f"Prepared CSV file with {len(spendings)} rows")
 
         # Send file
         await context.bot.send_document(
@@ -48,17 +46,16 @@ async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT
             filename=f"spendings_{user_id}.csv",
             caption="Here are your exported spendings",
         )
-        logger.info(f"Successfully sent export file to user {user_id}")
+        log_user_action(user_id, "successfully exported spendings to CSV")
 
     except Exception as e:
-        logger.error(f"Error exporting spendings for user {user_id}: {e}")
-        await update.message.reply_text("❌ Failed to export spendings. Please try again.")
+        await handle_db_error(update, "exporting spendings", e)
 
     finally:
         # Clean up
-        try:
-            output.close()
-            logger.debug("Cleaned up export file resources")
-        except Exception as e:
-            logger.error(f"Error cleaning up export file resources: {e}")
-            pass
+        if output:
+            try:
+                output.close()
+            except Exception as e:
+                # Just log, but don't report to user as the main operation might have succeeded
+                log_user_action(user_id, f"error cleaning up export resources: {e}")

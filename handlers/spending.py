@@ -5,6 +5,7 @@ from telegram.ext import CommandHandler, ContextTypes, ConversationHandler, Mess
 
 from constants import BOT_COMMANDS
 from db import db
+from handlers.common import cancel, create_keyboard_markup, handle_db_error, log_user_action
 from utils.logging import logger
 
 # Define states for the conversation
@@ -22,14 +23,13 @@ def parse_date(value: str) -> date:
 
 async def start_add(update: Update, _: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    logger.info(f"User {user_id} initiated adding a spending.")
+    log_user_action(user_id, "initiated adding a spending")
 
     # Add a 'skip' button for the description state
-    keyboard = [["No description"]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+    keyboard = create_keyboard_markup(["No description"])
     await update.message.reply_text(
         "Please provide a description:",
-        reply_markup=reply_markup,
+        reply_markup=keyboard,
     )
     return DESCRIPTION
 
@@ -54,10 +54,8 @@ async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
         currencies = await db.get_user_currencies(user_id)
 
         # Create a keyboard with currency options
-        keyboard = [[c] for c in currencies]
-        reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
-
-        await update.message.reply_text("Enter the currency:", reply_markup=reply_markup)
+        keyboard = create_keyboard_markup(currencies)
+        await update.message.reply_text("Enter the currency:", reply_markup=keyboard)
         return CURRENCY
     except ValueError:
         await update.message.reply_text("❌ Invalid amount. Please enter a valid number:")
@@ -70,11 +68,10 @@ async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     currency = update.message.text.upper()
     if currency not in currencies:
-        keyboard = [[c] for c in currencies]
-        reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+        keyboard = create_keyboard_markup(currencies)
         await update.message.reply_text(
             "❌ Invalid currency code. Please select a valid currency from the options below:",
-            reply_markup=reply_markup,
+            reply_markup=keyboard,
         )
         return CURRENCY
     context.user_data["currency"] = currency
@@ -83,9 +80,8 @@ async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     categories = await db.get_user_categories(user_id)
 
     # Add categories as buttons
-    keyboard = [[category] for category in categories]
-    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
-    await update.message.reply_text("Enter the category:", reply_markup=reply_markup)
+    keyboard = create_keyboard_markup(categories)
+    await update.message.reply_text("Enter the category:", reply_markup=keyboard)
     return CATEGORY
 
 
@@ -94,11 +90,10 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["category"] = category
 
     # Add a 'today' button for the date state
-    keyboard = [["Today"]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+    keyboard = create_keyboard_markup(["Today"])
     await update.message.reply_text(
         "Enter the date or press 'Today' for today's date:",
-        reply_markup=reply_markup,
+        reply_markup=keyboard,
     )
     return DATE
 
@@ -133,7 +128,7 @@ async def write_spending_to_db(update: Update, context: ContextTypes.DEFAULT_TYP
         spend_date = context.user_data["date"]
 
         await db.add_spending(user_id, description, amount, currency, category, spend_date.isoformat())
-        logger.info(f"User {user_id} added spending: {amount} {currency} for {category} on {spend_date}.")
+        log_user_action(user_id, f"added spending: {amount} {currency} for {category} on {spend_date}")
 
         await update.message.reply_text(
             f"✅ Spending added successfully!\n"
@@ -144,13 +139,7 @@ async def write_spending_to_db(update: Update, context: ContextTypes.DEFAULT_TYP
             reply_markup=ReplyKeyboardRemove(),
         )
     except Exception as e:
-        logger.error(f"Error while saving spending for user {user_id}: {e}")
-        await update.message.reply_text(f"❌ Error while saving to the database: {e}")
-
-
-async def cancel(update: Update, _: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Operation canceled.", reply_markup=ReplyKeyboardRemove())
-    return ConversationHandler.END
+        await handle_db_error(update, "while saving spending", e)
 
 
 # Define the ConversationHandler

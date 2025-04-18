@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 
 from constants import ITEMS_PER_PAGE
 from db import db
-from utils.logging import logger
+from handlers.common import log_user_action
 from utils.pagination import (
     create_pagination_buttons,
     format_spending_button_text,
@@ -17,11 +17,12 @@ from utils.pagination import (
 async def show_spendings_page(update: Update, user_id: int, page: int = 0):
     """Show a page of spendings with navigation buttons."""
     offset = page * ITEMS_PER_PAGE
+    log_user_action(user_id, f"viewing spendings list page {page + 1}")
 
     # Get total count for pagination
     total_count = await db.get_spendings_count(user_id)
     if total_count == 0:
-        logger.info(f"No spendings found for user {user_id}.")
+        log_user_action(user_id, "attempted to view list but has no spendings")
         await handle_no_results(update, "No spendings found")
         return
 
@@ -60,7 +61,7 @@ async def show_spendings_page(update: Update, user_id: int, page: int = 0):
 async def list_spendings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """Handler for /list command."""
     user_id = update.effective_user.id
-    logger.info(f"User {user_id} requested a list of spendings.")
+    log_user_action(user_id, "requested a list of spendings")
     await show_spendings_page(update, user_id)
 
 
@@ -81,6 +82,8 @@ async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     elif data.startswith("list_detail:"):
         # Handle spending details view
         spending_id = int(data.split(":")[1])
+        log_user_action(user_id, f"viewing detail of spending {spending_id}")
+
         # Get the current page by finding the highlighted button in pagination
         current_page = get_current_page_from_markup(query.message.reply_markup)
 
@@ -102,6 +105,7 @@ async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         parts = data.split(":")
         spending_id = int(parts[1])
         current_page = int(parts[2])
+        log_user_action(user_id, f"deleting spending {spending_id} from list")
 
         # Use the common deletion handler
         await handle_delete_spending(

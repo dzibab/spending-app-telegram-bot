@@ -3,6 +3,7 @@ from telegram.ext import CommandHandler, ContextTypes, ConversationHandler, Mess
 
 from constants import BOT_COMMANDS, ITEMS_PER_PAGE
 from db import db
+from handlers.common import cancel, log_user_action
 from utils.logging import logger
 from utils.pagination import (
     create_pagination_buttons,
@@ -20,6 +21,7 @@ SEARCH_INPUT = range(1)
 async def show_search_results(update: Update, user_id: int, query: str = None, amount: float = None, page: int = 0):
     """Show paginated search results."""
     offset = page * ITEMS_PER_PAGE
+    log_user_action(user_id, f"viewing search results page {page + 1}")
 
     # Get total count for pagination
     total_count = await db.count_search_results(user_id, query, amount)
@@ -64,6 +66,7 @@ async def show_search_results(update: Update, user_id: int, query: str = None, a
 
 async def start_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for /search command."""
+    log_user_action(update.effective_user.id, "initiated search")
     await update.message.reply_text(
         "Please enter your search term or amount. Examples:\n"
         "- groceries (to search descriptions)\n"
@@ -83,10 +86,12 @@ async def handle_search_input(update: Update, context: ContextTypes.DEFAULT_TYPE
         amount = float(search_input)
         context.user_data["search_amount"] = amount
         context.user_data["search_query"] = None
+        log_user_action(user_id, f"searching for amount {amount}")
     except ValueError:
         # If not a number, treat as description search
         context.user_data["search_amount"] = None
         context.user_data["search_query"] = search_input
+        log_user_action(user_id, f"searching for term '{search_input}'")
 
     await show_search_results(
         update, user_id, context.user_data.get("search_query"), context.user_data.get("search_amount")
@@ -115,6 +120,7 @@ async def handle_search_callback(update: Update, context: ContextTypes.DEFAULT_T
         spending_id = int(data.split(":")[1])
         # Get the current page by finding the highlighted button in pagination
         current_page = get_current_page_from_markup(query.message.reply_markup)
+        log_user_action(user_id, f"viewing detail of spending {spending_id}")
 
         # Get spending details from database
         spending = await db.get_spending_by_id(user_id, spending_id)
@@ -135,6 +141,7 @@ async def handle_search_callback(update: Update, context: ContextTypes.DEFAULT_T
         parts = data.split(":")
         spending_id = int(parts[1])
         current_page = int(parts[2])
+        log_user_action(user_id, f"deleting spending {spending_id} from search results")
 
         # Get current search parameters from user_data
         search_query = context.user_data.get("search_query")
@@ -158,12 +165,6 @@ async def handle_search_callback(update: Update, context: ContextTypes.DEFAULT_T
         await show_search_results(
             update, user_id, context.user_data.get("search_query"), context.user_data.get("search_amount")
         )
-
-
-async def cancel(update: Update, _: ContextTypes.DEFAULT_TYPE):
-    """Cancel the search operation."""
-    await update.message.reply_text("Search canceled.")
-    return ConversationHandler.END
 
 
 # Create the conversation handler for search
