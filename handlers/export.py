@@ -22,6 +22,8 @@ async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT
 
         logger.debug(f"Retrieved {len(spendings)} spendings for export")
 
+        await update.message.reply_text("Preparing your export...")
+
         # Create CSV in memory
         output = StringIO()
         writer = csv.writer(output)
