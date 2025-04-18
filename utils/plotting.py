@@ -58,7 +58,7 @@ class ChartGenerator:
         month: int,
         year: int,
         figsize: None | tuple[float, float] = None,
-        dpi: int = 300
+        dpi: int = 300,
     ):
         """Initialize chart generator.
 
@@ -70,12 +70,12 @@ class ChartGenerator:
             figsize: Optional figure size as (width, height) in inches
             dpi: Resolution for saved images
         """
-        self.data = data.sort_values(by='total', ascending=False).copy()
+        self.data = data.sort_values(by="total", ascending=False).copy()
         self.main_currency = main_currency
         self.month = month
         self.year = year
-        self.total_spending = data['total'].sum()
-        self.date_str = datetime(year, month, 1).strftime('%B %Y')
+        self.total_spending = data["total"].sum()
+        self.date_str = datetime(year, month, 1).strftime("%B %Y")
         self.figsize = figsize
         self.dpi = dpi
         self.figure = None
@@ -91,9 +91,9 @@ class ChartGenerator:
         """
         # Use default figure sizes if none provided
         if self.figsize is None:
-            if chart_type == 'bar':
+            if chart_type == "bar":
                 self.figsize = (12, 8)
-            elif chart_type == 'pie':
+            elif chart_type == "pie":
                 self.figsize = (10, 8)
 
         self.figure = plt.figure(figsize=self.figsize)
@@ -107,14 +107,10 @@ class ChartGenerator:
         """
         logger.debug(f"Creating bar chart for {self.month}/{self.year} in {self.main_currency}")
 
-        self._setup_figure('bar')
+        self._setup_figure("bar")
 
         # Plot the bar chart
-        bars = plt.bar(
-            self.data['category'],
-            self.data['total'],
-            color=plt.cm.Paired(range(len(self.data)))
-        )
+        bars = plt.bar(self.data["category"], self.data["total"], color=plt.cm.Paired(range(len(self.data))))
 
         # Add percentage labels and total spending on top of each bar
         for bar, (_, total) in zip(bars, self.data.itertuples(index=False), strict=False):
@@ -122,22 +118,21 @@ class ChartGenerator:
             plt.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height(),
-                f'{total:.2f} {self.main_currency}\n({percentage:.1f}%)',
-                ha='center',
-                va='bottom',
-                fontsize=10
+                f"{total:.2f} {self.main_currency}\n({percentage:.1f}%)",
+                ha="center",
+                va="bottom",
+                fontsize=10,
             )
 
         # Add gridlines for better readability
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        plt.grid(axis="y", linestyle="--", alpha=0.7)
 
         # Set labels and title
-        plt.xlabel('Category', fontsize=12)
-        plt.ylabel(f'Total Spending ({self.main_currency})', fontsize=12)
+        plt.xlabel("Category", fontsize=12)
+        plt.ylabel(f"Total Spending ({self.main_currency})", fontsize=12)
         plt.title(
-            f"Spending by Category for {self.date_str}\n"
-            f"Total: {self.total_spending:.2f} {self.main_currency}",
-            fontsize=14
+            f"Spending by Category for {self.date_str}\nTotal: {self.total_spending:.2f} {self.main_currency}",
+            fontsize=14,
         )
         plt.xticks(rotation=45, ha="right", fontsize=10)
         plt.tight_layout()
@@ -152,15 +147,15 @@ class ChartGenerator:
         """
         logger.debug(f"Creating pie chart for {self.month}/{self.year} in {self.main_currency}")
 
-        self._setup_figure('pie')
+        self._setup_figure("pie")
 
         # Plot the pie chart
         _, texts, autotexts = plt.pie(
-            self.data['total'],
-            labels=self.data['category'],
-            autopct=lambda p: f'{p:.1f}%\n({(p * self.total_spending / 100):.2f} {self.main_currency})',
+            self.data["total"],
+            labels=self.data["category"],
+            autopct=lambda p: f"{p:.1f}%\n({(p * self.total_spending / 100):.2f} {self.main_currency})",
             startangle=140,
-            colors=plt.cm.Paired(range(len(self.data)))
+            colors=plt.cm.Paired(range(len(self.data))),
         )
 
         # Style the text
@@ -170,11 +165,10 @@ class ChartGenerator:
             autotext.set_fontsize(9)
 
         plt.title(
-            f"Spending Distribution for {self.date_str}\n"
-            f"Total: {self.total_spending:.2f} {self.main_currency}",
-            fontsize=14
+            f"Spending Distribution for {self.date_str}\nTotal: {self.total_spending:.2f} {self.main_currency}",
+            fontsize=14,
         )
-        plt.axis('equal')  # Equal aspect ratio ensures the pie chart is circular
+        plt.axis("equal")  # Equal aspect ratio ensures the pie chart is circular
 
         return self.figure
 
@@ -191,7 +185,7 @@ class ChartGenerator:
             raise ChartError.no_chart_created()
 
         buf = BytesIO()
-        self.figure.savefig(buf, format='png', dpi=self.dpi, bbox_inches='tight')
+        self.figure.savefig(buf, format="png", dpi=self.dpi, bbox_inches="tight")
         buf.seek(0)
         return buf
 
@@ -222,7 +216,7 @@ def generate_plot(
     year: int,
     chart_type: str = "bar",
     figsize: None | tuple[float, float] = None,
-    dpi: int = 300
+    dpi: int = 300,
 ) -> BytesIO:
     """Generate a plot visualization of spending data.
 
@@ -244,12 +238,7 @@ def generate_plot(
     logger.info(f"Generating {chart_type} chart for {month}/{year} in {main_currency}")
 
     chart_generator = ChartGenerator(
-        data=data,
-        main_currency=main_currency,
-        month=month,
-        year=year,
-        figsize=figsize,
-        dpi=dpi
+        data=data, main_currency=main_currency, month=month, year=year, figsize=figsize, dpi=dpi
     )
 
     try:
@@ -312,10 +301,7 @@ def create_pagination_buttons(current_page: int, total_pages: int, callback_pref
         button_text = f"-{page + 1}-" if page == current_page else str(page + 1)
         # Make current page non-clickable
         callback_data = "noop" if page == current_page else f"{callback_prefix}:{page}"
-        buttons.append(InlineKeyboardButton(
-            button_text,
-            callback_data=callback_data
-        ))
+        buttons.append(InlineKeyboardButton(button_text, callback_data=callback_data))
 
     # Show ellipsis if there are hidden pages at the end
     if current_page < total_pages - 3:

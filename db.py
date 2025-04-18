@@ -11,6 +11,7 @@ from utils.logging import logger
 @dataclass
 class Spending:
     """Represents a spending record."""
+
     id: int | None
     user_id: int
     description: str
@@ -20,11 +21,10 @@ class Spending:
     date: str
 
     @classmethod
-    def from_row(cls, row: tuple) -> 'Spending':
+    def from_row(cls, row: tuple) -> "Spending":
         """Create a Spending instance from a database row."""
         return cls(
-            id=row[0], user_id=row[1], description=row[2],
-            amount=row[3], currency=row[4], category=row[5], date=row[6]
+            id=row[0], user_id=row[1], description=row[2], amount=row[3], currency=row[4], category=row[5], date=row[6]
         )
 
 
@@ -138,10 +138,7 @@ class Database:
         try:
             async with self.transaction() as cursor:
                 # Check if user already has currencies
-                await cursor.execute(
-                    "SELECT 1 FROM currencies WHERE user_id = ? LIMIT 1;",
-                    (user_id,)
-                )
+                await cursor.execute("SELECT 1 FROM currencies WHERE user_id = ? LIMIT 1;", (user_id,))
                 currencies_exist = await cursor.fetchone()
 
                 if currencies_exist:
@@ -151,8 +148,7 @@ class Database:
                 # Initialize default currencies
                 default_currencies = [(user_id, currency) for currency in DEFAULT_CURRENCIES]
                 await cursor.executemany(
-                    "INSERT INTO currencies (user_id, currency_code) VALUES (?, ?);",
-                    default_currencies
+                    "INSERT INTO currencies (user_id, currency_code) VALUES (?, ?);", default_currencies
                 )
                 logger.info(f"Default currencies initialized for user {user_id}")
         except Exception as e:
@@ -165,10 +161,7 @@ class Database:
         try:
             async with self.transaction() as cursor:
                 # Check if user already has categories
-                await cursor.execute(
-                    "SELECT 1 FROM categories WHERE user_id = ? LIMIT 1;",
-                    (user_id,)
-                )
+                await cursor.execute("SELECT 1 FROM categories WHERE user_id = ? LIMIT 1;", (user_id,))
                 categories_exist = await cursor.fetchone()
 
                 if categories_exist:
@@ -178,8 +171,7 @@ class Database:
                 # Initialize default categories
                 default_categories = [(user_id, category) for category in DEFAULT_CATEGORIES]
                 await cursor.executemany(
-                    "INSERT INTO categories (user_id, category_name) VALUES (?, ?);",
-                    default_categories
+                    "INSERT INTO categories (user_id, category_name) VALUES (?, ?);", default_categories
                 )
                 logger.info(f"Default categories initialized for user {user_id}")
         except Exception as e:
@@ -202,10 +194,7 @@ class Database:
         logger.debug(f"Fetching currencies for user {user_id}")
         try:
             async with self.connection() as cursor:
-                await cursor.execute(
-                    "SELECT currency_code FROM currencies WHERE user_id = ?",
-                    (user_id,)
-                )
+                await cursor.execute("SELECT currency_code FROM currencies WHERE user_id = ?", (user_id,))
                 rows = await cursor.fetchall()
                 currencies = [row[0] for row in rows]
                 logger.debug(f"Retrieved {len(currencies)} currencies for user {user_id}")
@@ -219,10 +208,7 @@ class Database:
         logger.debug(f"Fetching categories for user {user_id}")
         try:
             async with self.connection() as cursor:
-                await cursor.execute(
-                    "SELECT category_name FROM categories WHERE user_id = ?",
-                    (user_id,)
-                )
+                await cursor.execute("SELECT category_name FROM categories WHERE user_id = ?", (user_id,))
                 rows = await cursor.fetchall()
                 categories = [row[0] for row in rows]
                 logger.debug(f"Retrieved {len(categories)} categories for user {user_id}")
@@ -237,8 +223,7 @@ class Database:
         try:
             async with self.transaction() as cursor:
                 await cursor.execute(
-                    "INSERT INTO currencies (user_id, currency_code) VALUES (?, ?);",
-                    (user_id, currency)
+                    "INSERT INTO currencies (user_id, currency_code) VALUES (?, ?);", (user_id, currency)
                 )
                 logger.info(f"Currency {currency} added for user {user_id}")
                 return True
@@ -252,8 +237,7 @@ class Database:
         try:
             async with self.transaction() as cursor:
                 await cursor.execute(
-                    "INSERT INTO categories (user_id, category_name) VALUES (?, ?);",
-                    (user_id, category)
+                    "INSERT INTO categories (user_id, category_name) VALUES (?, ?);", (user_id, category)
                 )
                 logger.info(f"Category {category} added for user {user_id}")
                 return True
@@ -267,8 +251,7 @@ class Database:
         try:
             async with self.transaction() as cursor:
                 await cursor.execute(
-                    "DELETE FROM currencies WHERE user_id = ? AND currency_code = ?;",
-                    (user_id, currency)
+                    "DELETE FROM currencies WHERE user_id = ? AND currency_code = ?;", (user_id, currency)
                 )
                 # In aiosqlite, rowcount is available after execution
                 success = cursor.rowcount > 0
@@ -287,8 +270,7 @@ class Database:
         try:
             async with self.transaction() as cursor:
                 await cursor.execute(
-                    "DELETE FROM categories WHERE user_id = ? AND category_name = ?;",
-                    (user_id, category)
+                    "DELETE FROM categories WHERE user_id = ? AND category_name = ?;", (user_id, category)
                 )
                 success = cursor.rowcount > 0
                 if success:
@@ -305,10 +287,7 @@ class Database:
         logger.debug(f"Fetching main currency for user {user_id}")
         try:
             async with self.connection() as cursor:
-                await cursor.execute(
-                    "SELECT currency_code FROM main_currency WHERE user_id = ?",
-                    (user_id,)
-                )
+                await cursor.execute("SELECT currency_code FROM main_currency WHERE user_id = ?", (user_id,))
                 row = await cursor.fetchone()
                 main_currency = row[0] if row else None
                 logger.debug(f"Main currency for user {user_id}: {main_currency}")
@@ -322,11 +301,14 @@ class Database:
         logger.info(f"Setting main currency {currency_code} for user {user_id}")
         try:
             async with self.transaction() as cursor:
-                await cursor.execute("""
+                await cursor.execute(
+                    """
                     INSERT INTO main_currency (user_id, currency_code)
                     VALUES (?, ?)
                     ON CONFLICT(user_id) DO UPDATE SET currency_code = excluded.currency_code;
-                """, (user_id, currency_code))
+                """,
+                    (user_id, currency_code),
+                )
                 logger.info(f"Main currency {currency_code} set for user {user_id}")
         except Exception as e:
             logger.error(f"Error setting main currency {currency_code} for user {user_id}: {e}")
@@ -362,9 +344,7 @@ class Database:
             logger.error(f"Error fetching month-year combinations for user {user_id}: {e}")
             return []
 
-    async def get_spending_data_for_month(
-        self, user_id: int, year: str, month: str
-    ) -> list[tuple[str, float, str]]:
+    async def get_spending_data_for_month(self, user_id: int, year: str, month: str) -> list[tuple[str, float, str]]:
         """Get spending data for a specific month."""
         logger.debug(f"Fetching spending data for user {user_id} for {month}/{year}")
         query = """
@@ -390,12 +370,15 @@ class Database:
         logger.debug(f"Fetching spending totals by category for user {user_id} for {month}/{year}")
         try:
             async with self.connection() as cursor:
-                await cursor.execute("""
+                await cursor.execute(
+                    """
                     SELECT category, SUM(amount) as total, currency
                     FROM spendings
                     WHERE user_id = ? AND strftime('%Y', date) = ? AND strftime('%m', date) = ?
                     GROUP BY category, currency
-                """, (user_id, year, month))
+                """,
+                    (user_id, year, month),
+                )
                 totals = await cursor.fetchall()
                 logger.debug(f"Retrieved {len(totals)} spending totals")
                 return totals
@@ -404,18 +387,20 @@ class Database:
             return []
 
     async def add_spending(
-        self, user_id: int, description: str, amount: float,
-        currency: str, category: str, spend_date: str
+        self, user_id: int, description: str, amount: float, currency: str, category: str, spend_date: str
     ) -> None:
         """Add a new spending record."""
         logger.info(f"Adding spending for user {user_id}")
         try:
             async with self.transaction() as cursor:
-                await cursor.execute("""
+                await cursor.execute(
+                    """
                     INSERT INTO spendings (
                         user_id, description, amount, currency, category, date
                     ) VALUES (?, ?, ?, ?, ?, ?)
-                """, (user_id, description, amount, currency, category, spend_date))
+                """,
+                    (user_id, description, amount, currency, category, spend_date),
+                )
                 logger.info("Spending added successfully")
         except Exception as e:
             logger.error(f"Error adding spending: {e}")
@@ -426,10 +411,7 @@ class Database:
         logger.info(f"Removing spending with ID {spending_id} for user {user_id}")
         try:
             async with self.transaction() as cursor:
-                await cursor.execute(
-                    "DELETE FROM spendings WHERE id = ? AND user_id = ?",
-                    (spending_id, user_id)
-                )
+                await cursor.execute("DELETE FROM spendings WHERE id = ? AND user_id = ?", (spending_id, user_id))
                 success = cursor.rowcount > 0
                 if success:
                     logger.info("Spending removed successfully")
@@ -440,19 +422,20 @@ class Database:
             logger.error(f"Error removing spending: {e}")
             return False
 
-    async def export_all_spendings(
-        self, user_id: int
-    ) -> list[tuple[str, float, str, str, str]]:
+    async def export_all_spendings(self, user_id: int) -> list[tuple[str, float, str, str, str]]:
         """Export all spendings for a user."""
         logger.debug(f"Exporting all spendings for user {user_id}")
         try:
             async with self.connection() as cursor:
-                await cursor.execute("""
+                await cursor.execute(
+                    """
                     SELECT description, amount, currency, category, date
                     FROM spendings
                     WHERE user_id = ?
                     ORDER BY date DESC, id DESC
-                """, (user_id,))
+                """,
+                    (user_id,),
+                )
                 spendings = await cursor.fetchall()
                 logger.debug(f"Exported {len(spendings)} spendings")
                 return spendings
@@ -465,10 +448,7 @@ class Database:
         logger.debug(f"Fetching total spendings count for user {user_id}")
         try:
             async with self.connection() as cursor:
-                await cursor.execute(
-                    "SELECT COUNT(*) FROM spendings WHERE user_id = ?",
-                    (user_id,)
-                )
+                await cursor.execute("SELECT COUNT(*) FROM spendings WHERE user_id = ?", (user_id,))
                 count = (await cursor.fetchone())[0]
                 logger.debug(f"Total spendings count: {count}")
                 return count
@@ -483,13 +463,16 @@ class Database:
         logger.debug(f"Fetching paginated spendings for user {user_id}, offset {offset}, limit {limit}")
         try:
             async with self.connection() as cursor:
-                await cursor.execute("""
+                await cursor.execute(
+                    """
                     SELECT id, description, amount, currency, category, date
                     FROM spendings
                     WHERE user_id = ?
                     ORDER BY date DESC, id DESC
                     LIMIT ? OFFSET ?
-                """, (user_id, limit, offset))
+                """,
+                    (user_id, limit, offset),
+                )
                 spendings = await cursor.fetchall()
                 logger.debug(f"Retrieved {len(spendings)} spendings")
                 return spendings
@@ -498,8 +481,7 @@ class Database:
             return []
 
     async def search_spendings(
-        self, user_id: int, query: str = None, amount: float = None,
-        offset: int = 0, limit: int = 10
+        self, user_id: int, query: str = None, amount: float = None, offset: int = 0, limit: int = 10
     ) -> list[tuple[int, str, float, str, str, str]]:
         """Search spendings by description or amount.
 
@@ -542,9 +524,7 @@ class Database:
             logger.error(f"Error searching spendings: {e}")
             return []
 
-    async def count_search_results(
-        self, user_id: int, query: str = None, amount: float = None
-    ) -> int:
+    async def count_search_results(self, user_id: int, query: str = None, amount: float = None) -> int:
         """Count total number of search results.
 
         Args:
@@ -577,17 +557,12 @@ class Database:
             logger.error(f"Error counting search results: {e}")
             return 0
 
-    async def get_spending_by_id(
-        self, user_id: int, spending_id: int
-    ) -> Spending | None:
+    async def get_spending_by_id(self, user_id: int, spending_id: int) -> Spending | None:
         """Get details of a specific spending record."""
         logger.debug(f"Fetching details for spending ID {spending_id} for user {user_id}")
         try:
             async with self.connection() as cursor:
-                await cursor.execute(
-                    "SELECT * FROM spendings WHERE id = ? AND user_id = ?",
-                    (spending_id, user_id)
-                )
+                await cursor.execute("SELECT * FROM spendings WHERE id = ? AND user_id = ?", (spending_id, user_id))
                 row = await cursor.fetchone()
                 if row:
                     # Convert the aiosqlite.Row to a tuple

@@ -29,7 +29,7 @@ async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT
         writer = csv.writer(output)
 
         # Write header
-        headers = ['Description', 'Amount', 'Currency', 'Category', 'Date']
+        headers = ["Description", "Amount", "Currency", "Category", "Date"]
         writer.writerow(headers)
         logger.debug("Created CSV file with headers")
 
@@ -46,7 +46,7 @@ async def export_spendings_handler(update: Update, context: ContextTypes.DEFAULT
             chat_id=update.effective_chat.id,
             document=output.getvalue().encode(),
             filename=f"spendings_{user_id}.csv",
-            caption="Here are your exported spendings"
+            caption="Here are your exported spendings",
         )
         logger.info(f"Successfully sent export file to user {user_id}")
 

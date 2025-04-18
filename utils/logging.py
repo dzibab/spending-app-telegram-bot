@@ -11,8 +11,8 @@ logger = logging.getLogger("spending_bot")
 logger.setLevel(logging.DEBUG)
 
 # Create formatters
-console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s')
+console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s")
 
 # Create console handler with INFO level
 console_handler = logging.StreamHandler()
@@ -23,8 +23,8 @@ console_handler.setFormatter(console_formatter)
 log_file = f"logs/spending_bot_{datetime.now().strftime('%Y%m%d')}.log"
 file_handler = RotatingFileHandler(
     log_file,
-    maxBytes=5*1024*1024,  # 5MB
-    backupCount=5
+    maxBytes=5 * 1024 * 1024,  # 5MB
+    backupCount=5,
 )
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(file_formatter)

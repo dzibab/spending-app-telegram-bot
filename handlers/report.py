@@ -22,16 +22,10 @@ async def report_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     buttons = [
-        [InlineKeyboardButton(
-            f"{datetime(int(y), int(m), 1).strftime('%B %Y')}",
-            callback_data=f"month:{m}:{y}"
-        )]
+        [InlineKeyboardButton(f"{datetime(int(y), int(m), 1).strftime('%B %Y')}", callback_data=f"month:{m}:{y}")]
         for m, y in rows
     ]
-    await update.message.reply_text(
-        "📅 Select a month to view the report:",
-        reply_markup=InlineKeyboardMarkup(buttons)
-    )
+    await update.message.reply_text("📅 Select a month to view the report:", reply_markup=InlineKeyboardMarkup(buttons))
 
 
 async def handle_report_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
@@ -47,13 +41,15 @@ async def handle_report_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -
         await query.edit_message_text("📭 No spendings found for this month.")
         return
 
-    buttons = [[
-        InlineKeyboardButton("Bar Chart", callback_data=f"chart:bar:{month}:{year}"),
-        InlineKeyboardButton("Pie Chart", callback_data=f"chart:pie:{month}:{year}")
-    ]]
+    buttons = [
+        [
+            InlineKeyboardButton("Bar Chart", callback_data=f"chart:bar:{month}:{year}"),
+            InlineKeyboardButton("Pie Chart", callback_data=f"chart:pie:{month}:{year}"),
+        ]
+    ]
     await query.edit_message_text(
         text=f"📊 Select the chart type for {datetime(year, month, 1).strftime('%B %Y')}:",
-        reply_markup=InlineKeyboardMarkup(buttons)
+        reply_markup=InlineKeyboardMarkup(buttons),
     )
 
 
@@ -89,10 +85,7 @@ async def handle_chart_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) ->
             continue
 
     # Create DataFrame from converted data
-    data = pd.DataFrame([
-        {"category": cat, "total": amount}
-        for cat, amount in converted_data.items()
-    ])
+    data = pd.DataFrame([{"category": cat, "total": amount} for cat, amount in converted_data.items()])
 
     if data.empty:
         await query.edit_message_text("❌ Error converting currencies. Please try again.")

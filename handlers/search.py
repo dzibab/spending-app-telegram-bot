@@ -40,10 +40,7 @@ async def show_search_results(update: Update, user_id: int, query: str = None, a
         button_text = f"{dt} | {amount} {currency} | {cat}"
         if desc:
             button_text += f" | {desc[:20]}"  # Truncate long descriptions
-        keyboard.append([InlineKeyboardButton(
-            button_text,
-            callback_data=f"search_detail:{spending_id}"
-        )])
+        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"search_detail:{spending_id}")])
 
     # Add pagination buttons
     keyboard.append(create_pagination_buttons(page, total_pages, "search_page"))
@@ -89,10 +86,7 @@ async def handle_search_input(update: Update, context: ContextTypes.DEFAULT_TYPE
         context.user_data["search_query"] = search_input
 
     await show_search_results(
-        update,
-        user_id,
-        context.user_data.get("search_query"),
-        context.user_data.get("search_amount")
+        update, user_id, context.user_data.get("search_query"), context.user_data.get("search_amount")
     )
     return ConversationHandler.END
 
@@ -111,11 +105,7 @@ async def handle_search_callback(update: Update, context: ContextTypes.DEFAULT_T
         # Handle pagination
         page = int(data.split(":")[1])
         await show_search_results(
-            update,
-            user_id,
-            context.user_data.get("search_query"),
-            context.user_data.get("search_amount"),
-            page
+            update, user_id, context.user_data.get("search_query"), context.user_data.get("search_amount"), page
         )
     elif data.startswith("search_detail:"):
         # Handle spending details view
@@ -133,23 +123,14 @@ async def handle_search_callback(update: Update, context: ContextTypes.DEFAULT_T
                 f"Description: {spending.description or 'No description'}"
             )
             # Add a back button that returns to search
-            keyboard = [[InlineKeyboardButton(
-                "« Back to search results",
-                callback_data="search_back"
-            )]]
-            await query.edit_message_text(
-                text=text,
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
+            keyboard = [[InlineKeyboardButton("« Back to search results", callback_data="search_back")]]
+            await query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard))
         else:
             await query.edit_message_text("❌ Spending not found.")
     elif data == "search_back":
         # Return to search results
         await show_search_results(
-            update,
-            user_id,
-            context.user_data.get("search_query"),
-            context.user_data.get("search_amount")
+            update, user_id, context.user_data.get("search_query"), context.user_data.get("search_amount")
         )
 
 
@@ -165,8 +146,5 @@ search_conversation_handler = ConversationHandler(
     states={
         SEARCH_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_search_input)],
     },
-    fallbacks=[
-        CommandHandler(cmd_info["command"], cancel)
-        for cmd_info in BOT_COMMANDS.values()
-    ],
+    fallbacks=[CommandHandler(cmd_info["command"], cancel) for cmd_info in BOT_COMMANDS.values()],
 )

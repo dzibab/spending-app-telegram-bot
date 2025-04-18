@@ -18,9 +18,9 @@ def get_current_page_from_markup(reply_markup: InlineKeyboardMarkup) -> int:
     # Find the button that's highlighted with dashes (current page)
     for button in pagination_row:
         # Current page button text is formatted like "-N-"
-        if button.text.startswith('-') and button.text.endswith('-'):
+        if button.text.startswith("-") and button.text.endswith("-"):
             # Extract the number from "-N-" format
-            return int(button.text.strip('-')) - 1  # Convert to 0-based
+            return int(button.text.strip("-")) - 1  # Convert to 0-based
 
     return 0  # Default to first page if not found
 
@@ -59,10 +59,7 @@ async def show_spendings_page(update: Update, user_id: int, page: int = 0):
         button_text = f"{dt} | {amount} {currency} | {cat}"
         if desc:
             button_text += f" | {desc[:20]}"  # Truncate long descriptions
-        keyboard.append([InlineKeyboardButton(
-            button_text,
-            callback_data=f"list_detail:{spending_id}"
-        )])
+        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"list_detail:{spending_id}")])
 
     # Add pagination buttons
     keyboard.append(create_pagination_buttons(page, total_pages, "list_page"))
@@ -117,12 +114,9 @@ async def handle_list_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
             # Add both back and delete buttons
             keyboard = [
                 [InlineKeyboardButton("« Back to list", callback_data=f"list_page:{current_page}")],
-                [InlineKeyboardButton("🗑️ Delete", callback_data=f"list_delete:{spending_id}:{current_page}")]
+                [InlineKeyboardButton("🗑️ Delete", callback_data=f"list_delete:{spending_id}:{current_page}")],
             ]
-            await query.edit_message_text(
-                text=text,
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
+            await query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard))
         else:
             await query.edit_message_text("❌ Spending not found.")
     elif data.startswith("list_delete:"):
@@ -155,7 +149,7 @@ async def handle_list_callback(update: Update, _: ContextTypes.DEFAULT_TYPE):
             logger.warning(f"Failed to remove spending {spending_id} for user {user_id}")
             await query.edit_message_text(
                 "❌ Failed to delete spending. It might have been already removed.",
-                reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("« Back to list", callback_data=f"list_page:{current_page}")
-                ]])
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("« Back to list", callback_data=f"list_page:{current_page}")]]
+                ),
             )

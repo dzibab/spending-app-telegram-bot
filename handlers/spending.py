@@ -30,7 +30,7 @@ async def start_add(update: Update, _: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Please provide a description:",
         reply_markup=reply_markup,
-        )
+    )
     return DESCRIPTION
 
 
@@ -57,10 +57,7 @@ async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[c] for c in currencies]
         reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
 
-        await update.message.reply_text(
-            "Enter the currency:",
-            reply_markup=reply_markup
-        )
+        await update.message.reply_text("Enter the currency:", reply_markup=reply_markup)
         return CURRENCY
     except ValueError:
         await update.message.reply_text("❌ Invalid amount. Please enter a valid number:")
@@ -77,7 +74,7 @@ async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
         await update.message.reply_text(
             "❌ Invalid currency code. Please select a valid currency from the options below:",
-            reply_markup=reply_markup
+            reply_markup=reply_markup,
         )
         return CURRENCY
     context.user_data["currency"] = currency
@@ -102,7 +99,7 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Enter the date or press 'Today' for today's date:",
         reply_markup=reply_markup,
-        )
+    )
     return DATE
 
 
@@ -144,7 +141,7 @@ async def write_spending_to_db(update: Update, context: ContextTypes.DEFAULT_TYP
             f"Amount: {amount} {currency}\n"
             f"Category: {category}\n"
             f"Date: {spend_date}",
-            reply_markup=ReplyKeyboardRemove()
+            reply_markup=ReplyKeyboardRemove(),
         )
     except Exception as e:
         logger.error(f"Error while saving spending for user {user_id}: {e}")
@@ -166,8 +163,5 @@ add_spending_conversation_handler = ConversationHandler(
         CATEGORY: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_category)],
         DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date)],
     },
-    fallbacks=[
-        CommandHandler(cmd_info["command"], cancel)
-        for cmd_info in BOT_COMMANDS.values()
-    ],
+    fallbacks=[CommandHandler(cmd_info["command"], cancel) for cmd_info in BOT_COMMANDS.values()],
 )

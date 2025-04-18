@@ -40,10 +40,7 @@ add_category_conversation_handler = ConversationHandler(
     states={
         CATEGORY_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_category_input)],
     },
-    fallbacks=[
-        CommandHandler(cmd_info["command"], cancel)
-        for cmd_info in BOT_COMMANDS.values()
-    ],
+    fallbacks=[CommandHandler(cmd_info["command"], cancel) for cmd_info in BOT_COMMANDS.values()],
 )
 
 
@@ -56,8 +53,7 @@ async def remove_category_handler(update: Update, _: CallbackContext):
         return
 
     keyboard = [
-        [InlineKeyboardButton(category, callback_data=f"remove_category:{category}")]
-        for category in categories
+        [InlineKeyboardButton(category, callback_data=f"remove_category:{category}")] for category in categories
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 

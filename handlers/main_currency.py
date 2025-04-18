@@ -53,6 +53,4 @@ async def handle_main_currency_callback(update: Update, _: ContextTypes.DEFAULT_
 
     except Exception as e:
         logger.error(f"Error setting main currency {currency} for user {user_id}: {e}")
-        await query.edit_message_text(
-            f"❌ Failed to set main currency to {currency}. Please try again."
-        )
+        await query.edit_message_text(f"❌ Failed to set main currency to {currency}. Please try again.")

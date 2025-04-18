@@ -22,10 +22,7 @@ class ExchangeRateCache:
 
     def set_rates(self, currency: str, rates: dict[str, float], current_date: date) -> None:
         """Cache exchange rates for a currency."""
-        self._cache[currency.upper()] = {
-            "date": current_date,
-            "rates": rates
-        }
+        self._cache[currency.upper()] = {"date": current_date, "rates": rates}
         logger.debug(f"Cached exchange rates for {currency}")
 
 
@@ -54,10 +51,7 @@ def fetch_rates(main_currency: str) -> dict[str, float]:
 
     logger.info(f"Fetching fresh exchange rates for {main_currency}")
     url = "https://api.exchangerate.host/live"
-    params = {
-        "access_key": EXCHANGE_API_KEY,
-        "source": main_currency.upper()
-    }
+    params = {"access_key": EXCHANGE_API_KEY, "source": main_currency.upper()}
 
     try:
         response = requests.get(url, params=params, timeout=10)  # Add timeout
