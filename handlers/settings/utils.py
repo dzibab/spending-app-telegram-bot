@@ -3,7 +3,7 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 # Common currency codes to offer for quick addition
-COMMON_CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "HKD", "SGD"]
+COMMON_CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "HKD", "SGD", "RUB"]
 
 # Common spending categories to offer for quick addition
 COMMON_CATEGORIES = [
