@@ -69,7 +69,7 @@ if __name__ == "__main__":
         CallbackQueryHandler(handle_remove_category_callback, pattern=r"^remove_category:"),
         CallbackQueryHandler(handle_main_currency_callback, pattern=r"^main_currency:"),
         CallbackQueryHandler(handle_list_callback, pattern=r"^list_(page|detail|delete):\d+"),
-        CallbackQueryHandler(handle_search_callback, pattern=r"^search_(page|detail|back)"),
+        CallbackQueryHandler(handle_search_callback, pattern=r"^search_(page|detail|back|delete)"),
         add_spending_conversation_handler,
         add_currency_conversation_handler,
         add_category_conversation_handler,
