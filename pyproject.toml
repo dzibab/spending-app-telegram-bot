@@ -4,6 +4,7 @@ version = "2025.4.18"
 requires-python = ">=3.10"
 dependencies = [
     "aiosqlite>=0.21.0",
+    "alembic>=1.13.1",
     "matplotlib>=3.10.1",
     "pandas>=2.2.3",
     "pydantic>=2.11.3",
@@ -11,6 +12,7 @@ dependencies = [
     "python-telegram-bot>=22.0",
     "requests>=2.32.3",
     "ruff>=0.11.6",
+    "sqlalchemy>=2.0.27",
 ]
 
 [tool.ruff]
@@ -32,12 +34,12 @@ lint.exclude = [
     "venv",
     ".venv",
 ]
-line-length = 100
-target-version = "py310"
 lint.ignore = [
     "E501",  # Line too long (handled by formatter)
     "B008",  # Function calls in default parameter
 ]
+line-length = 100
+target-version = "py310"
 
 [tool.ruff.lint.per-file-ignores]
 "**/*test*.py" = ["S101"]  # Allow assert statements in tests
