@@ -28,6 +28,7 @@ from handlers.export_csv import export_spendings_handler, handle_export_callback
 from handlers.import_csv import (
     handle_csv_file_upload,
     handle_import_cancel,
+    handle_import_confirmation,
     import_conversation_handler,
     send_import_template,
 )
@@ -169,6 +170,7 @@ if __name__ == "__main__":
         CallbackQueryHandler(handle_export_callback, pattern=r"^export_back:"),
         CallbackQueryHandler(handle_import_cancel, pattern=r"^import_cancel"),
         CallbackQueryHandler(send_import_template, pattern=r"^import_template"),
+        CallbackQueryHandler(handle_import_confirmation, pattern=r"^import_confirm:"),
         # Conversation handlers
         add_spending_conversation_handler,
         add_currency_conversation_handler,
