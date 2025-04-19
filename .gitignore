@@ -177,5 +177,5 @@ cython_debug/
 uv.lock
 
 # db
-*.db
+*.db*
 *.sqlite
