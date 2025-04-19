@@ -15,8 +15,8 @@ async def show_add_currency_options(update: Update, user_id: int) -> None:
     log_user_action(user_id, "viewing add currency options")
 
     try:
-        # Get user's existing currencies
-        user_currencies = await db.get_user_currencies(user_id)
+        # Get user's existing currencies (both active and archived)
+        user_currencies = await db.get_user_currencies(user_id, include_archived=True)
 
         # Filter out currencies the user already has
         available_currencies = [
