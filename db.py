@@ -85,35 +85,84 @@ class Database:
         self.db_path = db_path
         self._connection = None
         self._connection_lock = asyncio.Lock()
+        self._connection_pool = []  # Simple connection pool
+        self._pool_size = 3  # Maximum number of connections in the pool
+        self._pool_lock = asyncio.Lock()
 
-        # Initialize cache for frequent database lookups
-        self._cache = Cache(ttl_seconds=300)  # 5 minute TTL
+        # Initialize different caches with appropriate TTLs
+        # Static data like categories/currencies can be cached longer
+        self._user_settings_cache = Cache(ttl_seconds=1800)  # 30 minutes for user settings
+        self._search_cache = Cache(ttl_seconds=60)  # 1 minute for search results
+        self._reports_cache = Cache(ttl_seconds=3600)  # 1 hour for historical reports
+        self._dynamic_data_cache = Cache(ttl_seconds=300)  # 5 minutes for other data
 
         # Cache types
         self.CACHE_USER_CURRENCIES = "user_currencies"
         self.CACHE_USER_CATEGORIES = "user_categories"
         self.CACHE_USER_MAIN_CURRENCY = "user_main_currency"
         self.CACHE_SPENDING_COUNT = "spending_count"
+        self.CACHE_SEARCH_RESULTS = "search_results"
+        self.CACHE_SEARCH_COUNT = "search_count"
+        self.CACHE_REPORT_DATA = "monthly_report"
+        self.CACHE_FREQUENTLY_USED = "frequently_used"
 
     async def get_connection(self) -> aiosqlite.Connection:
-        """Get a database connection asynchronously."""
-        async with self._connection_lock:
-            if not self._connection:
-                logger.debug("Opening new async database connection")
-                self._connection = await aiosqlite.connect(self.db_path)
-                # Enable foreign keys
-                await self._connection.execute("PRAGMA foreign_keys = ON")
-                # Make aiosqlite return rows as Row objects accessible by column name
-                self._connection.row_factory = aiosqlite.Row
-        return self._connection
+        """Get a database connection from the pool or create a new one."""
+        async with self._pool_lock:
+            # Try to get a connection from the pool
+            if self._connection_pool:
+                connection = self._connection_pool.pop()
+                logger.debug("Reusing connection from pool")
+                return connection
+
+        # No connection in the pool, create a new one
+        logger.debug("Opening new async database connection")
+        connection = await aiosqlite.connect(self.db_path)
+        # Enable foreign keys
+        await connection.execute("PRAGMA foreign_keys = ON")
+        # Optimize SQLite for performance
+        await connection.execute("PRAGMA journal_mode = WAL")
+        await connection.execute("PRAGMA synchronous = NORMAL")
+        await connection.execute("PRAGMA temp_store = MEMORY")
+        await connection.execute("PRAGMA mmap_size = 30000000000")
+        await connection.execute("PRAGMA cache_size = -32000")  # 32MB cache (-ve number means KB)
+
+        # Make aiosqlite return rows as Row objects accessible by column name
+        connection.row_factory = aiosqlite.Row
+        return connection
+
+    async def release_connection(self, connection: aiosqlite.Connection) -> None:
+        """Release connection back to the pool or close it."""
+        async with self._pool_lock:
+            # If pool is not full, return connection to pool
+            if len(self._connection_pool) < self._pool_size:
+                self._connection_pool.append(connection)
+                logger.debug("Connection released back to pool")
+                return
+
+        # If pool is full, just close the connection
+        await connection.close()
+        logger.debug("Connection pool full, closed connection")
 
     async def close(self) -> None:
-        """Close the database connection asynchronously."""
+        """Close all database connections in the pool."""
+        logger.info("Closing all database connections")
+        async with self._pool_lock:
+            for connection in self._connection_pool:
+                try:
+                    await connection.close()
+                except Exception as e:
+                    logger.error(f"Error closing pooled connection: {e}")
+            self._connection_pool.clear()
+
+        # Close primary connection if exists
         async with self._connection_lock:
             if self._connection:
                 await self._connection.close()
                 self._connection = None
-                logger.debug("Closed database connection")
+                logger.debug("Closed primary database connection")
+
+        logger.info("All database connections closed")
 
     @asynccontextmanager
     async def connection(self):
@@ -123,7 +172,8 @@ class Database:
             async with conn.cursor() as cursor:
                 yield cursor
         finally:
-            pass  # Connection will be kept in the pool
+            # Return connection to the pool
+            await self.release_connection(conn)
 
     @asynccontextmanager
     async def transaction(self):
@@ -137,6 +187,9 @@ class Database:
         except Exception:
             await conn.rollback()
             raise
+        finally:
+            # Return connection to the pool
+            await self.release_connection(conn)
 
     async def create_tables(self) -> None:
         """Create database tables if they don't exist."""
@@ -172,6 +225,14 @@ class Database:
                 )
                 await cursor.execute(
                     "CREATE INDEX IF NOT EXISTS idx_spendings_description ON spendings(description COLLATE NOCASE);"
+                )
+                # Add a compound index to improve search queries that filter by both user_id and description
+                await cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_spendings_user_desc ON spendings(user_id, description COLLATE NOCASE);"
+                )
+                # Add compound index for sorting patterns (common in pagination)
+                await cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_spendings_user_date_id ON spendings(user_id, date DESC, id DESC);"
                 )
 
                 # Create currencies table with composite primary key
@@ -321,7 +382,9 @@ class Database:
         try:
             # Check cache first - only use cache for active currencies
             if not include_archived:
-                cached_currencies = self._cache.get(self.CACHE_USER_CURRENCIES, user_id)
+                cached_currencies = self._user_settings_cache.get(
+                    self.CACHE_USER_CURRENCIES, user_id
+                )
                 if cached_currencies is not None:
                     logger.debug(f"Cache hit for user {user_id} currencies")
                     return cached_currencies
@@ -338,7 +401,7 @@ class Database:
 
                 # Update cache only for active currencies
                 if not include_archived:
-                    self._cache.set(self.CACHE_USER_CURRENCIES, user_id, currencies)
+                    self._user_settings_cache.set(self.CACHE_USER_CURRENCIES, user_id, currencies)
                 return currencies
         except Exception as e:
             logger.error(f"Error fetching currencies for user {user_id}: {e}")
@@ -358,7 +421,9 @@ class Database:
         try:
             # Check cache first - only use cache for active categories
             if not include_archived:
-                cached_categories = self._cache.get(self.CACHE_USER_CATEGORIES, user_id)
+                cached_categories = self._user_settings_cache.get(
+                    self.CACHE_USER_CATEGORIES, user_id
+                )
                 if cached_categories is not None:
                     logger.debug(f"Cache hit for user {user_id} categories")
                     return cached_categories
@@ -375,7 +440,7 @@ class Database:
 
                 # Update cache only for active categories
                 if not include_archived:
-                    self._cache.set(self.CACHE_USER_CATEGORIES, user_id, categories)
+                    self._user_settings_cache.set(self.CACHE_USER_CATEGORIES, user_id, categories)
                 return categories
         except Exception as e:
             logger.error(f"Error fetching categories for user {user_id}: {e}")
@@ -393,7 +458,7 @@ class Database:
                 logger.info(f"Currency {currency} added for user {user_id}")
 
                 # Invalidate cache
-                self._cache.invalidate(self.CACHE_USER_CURRENCIES, user_id)
+                self._user_settings_cache.invalidate(self.CACHE_USER_CURRENCIES, user_id)
                 return True
         except Exception as e:
             logger.error(f"Error adding currency {currency} for user {user_id}: {e}")
@@ -411,7 +476,7 @@ class Database:
                 logger.info(f"Category {category} added for user {user_id}")
 
                 # Invalidate cache
-                self._cache.invalidate(self.CACHE_USER_CATEGORIES, user_id)
+                self._user_settings_cache.invalidate(self.CACHE_USER_CATEGORIES, user_id)
                 return True
         except Exception as e:
             logger.error(f"Error adding category {category} for user {user_id}: {e}")
@@ -434,7 +499,7 @@ class Database:
                     logger.warning(f"Currency {currency} not found for user {user_id}")
 
                 # Invalidate cache
-                self._cache.invalidate(self.CACHE_USER_CURRENCIES, user_id)
+                self._user_settings_cache.invalidate(self.CACHE_USER_CURRENCIES, user_id)
                 return success
         except Exception as e:
             logger.error(f"Error removing currency {currency} for user {user_id}: {e}")
@@ -456,7 +521,7 @@ class Database:
                     logger.warning(f"Category {category} not found for user {user_id}")
 
                 # Invalidate cache
-                self._cache.invalidate(self.CACHE_USER_CATEGORIES, user_id)
+                self._user_settings_cache.invalidate(self.CACHE_USER_CATEGORIES, user_id)
                 return success
         except Exception as e:
             logger.error(f"Error removing category {category} for user {user_id}: {e}")
@@ -486,7 +551,7 @@ class Database:
                     logger.warning(f"Currency {currency} not found for user {user_id}")
 
                 # Invalidate cache
-                self._cache.invalidate(self.CACHE_USER_CURRENCIES, user_id)
+                self._user_settings_cache.invalidate(self.CACHE_USER_CURRENCIES, user_id)
                 return success
         except Exception as e:
             logger.error(f"Error archiving currency {currency} for user {user_id}: {e}")
@@ -516,7 +581,7 @@ class Database:
                     logger.warning(f"Currency {currency} not found for user {user_id}")
 
                 # Invalidate cache
-                self._cache.invalidate(self.CACHE_USER_CURRENCIES, user_id)
+                self._user_settings_cache.invalidate(self.CACHE_USER_CURRENCIES, user_id)
                 return success
         except Exception as e:
             logger.error(f"Error unarchiving currency {currency} for user {user_id}: {e}")
@@ -546,7 +611,7 @@ class Database:
                     logger.warning(f"Category {category} not found for user {user_id}")
 
                 # Invalidate cache
-                self._cache.invalidate(self.CACHE_USER_CATEGORIES, user_id)
+                self._user_settings_cache.invalidate(self.CACHE_USER_CATEGORIES, user_id)
                 return success
         except Exception as e:
             logger.error(f"Error archiving category {category} for user {user_id}: {e}")
@@ -576,7 +641,7 @@ class Database:
                     logger.warning(f"Category {category} not found for user {user_id}")
 
                 # Invalidate cache
-                self._cache.invalidate(self.CACHE_USER_CATEGORIES, user_id)
+                self._user_settings_cache.invalidate(self.CACHE_USER_CATEGORIES, user_id)
                 return success
         except Exception as e:
             logger.error(f"Error unarchiving category {category} for user {user_id}: {e}")
@@ -635,7 +700,9 @@ class Database:
         logger.debug(f"Fetching main currency for user {user_id}")
         try:
             # Check cache first
-            cached_main_currency = self._cache.get(self.CACHE_USER_MAIN_CURRENCY, user_id)
+            cached_main_currency = self._user_settings_cache.get(
+                self.CACHE_USER_MAIN_CURRENCY, user_id
+            )
             if cached_main_currency is not None:
                 logger.debug(f"Cache hit for user {user_id} main currency")
                 return cached_main_currency
@@ -649,7 +716,7 @@ class Database:
                 logger.debug(f"Main currency for user {user_id}: {main_currency}")
 
                 # Update cache
-                self._cache.set(self.CACHE_USER_MAIN_CURRENCY, user_id, main_currency)
+                self._user_settings_cache.set(self.CACHE_USER_MAIN_CURRENCY, user_id, main_currency)
                 return main_currency
         except Exception as e:
             logger.error(f"Error fetching main currency for user {user_id}: {e}")
@@ -671,7 +738,7 @@ class Database:
                 logger.info(f"Main currency {currency_code} set for user {user_id}")
 
                 # Invalidate cache
-                self._cache.invalidate(self.CACHE_USER_MAIN_CURRENCY, user_id)
+                self._user_settings_cache.invalidate(self.CACHE_USER_MAIN_CURRENCY, user_id)
         except Exception as e:
             logger.error(f"Error setting main currency {currency_code} for user {user_id}: {e}")
             raise
@@ -685,7 +752,7 @@ class Database:
                 logger.info(f"Main currency removed for user {user_id}")
 
                 # Invalidate cache
-                self._cache.invalidate(self.CACHE_USER_MAIN_CURRENCY, user_id)
+                self._user_settings_cache.invalidate(self.CACHE_USER_MAIN_CURRENCY, user_id)
         except Exception as e:
             logger.error(f"Error removing main currency for user {user_id}: {e}")
             raise
@@ -779,7 +846,7 @@ class Database:
                 logger.info("Spending added successfully")
 
                 # Invalidate spending count cache
-                self._cache.invalidate(self.CACHE_SPENDING_COUNT, user_id)
+                self._dynamic_data_cache.invalidate(self.CACHE_SPENDING_COUNT, user_id)
         except Exception as e:
             logger.error(f"Error adding spending: {e}")
             raise
@@ -811,7 +878,7 @@ class Database:
                 # Get unique user IDs to invalidate cache
                 user_ids = {spending[0] for spending in spendings}
                 for user_id in user_ids:
-                    self._cache.invalidate(self.CACHE_SPENDING_COUNT, user_id)
+                    self._dynamic_data_cache.invalidate(self.CACHE_SPENDING_COUNT, user_id)
 
                 return len(spendings)
         except Exception as e:
@@ -831,7 +898,7 @@ class Database:
                     logger.info("Spending removed successfully")
 
                     # Invalidate spending count cache
-                    self._cache.invalidate(self.CACHE_SPENDING_COUNT, user_id)
+                    self._dynamic_data_cache.invalidate(self.CACHE_SPENDING_COUNT, user_id)
                 else:
                     logger.warning("Spending not found")
                 return success
@@ -928,7 +995,7 @@ class Database:
         logger.debug(f"Fetching total spendings count for user {user_id}")
         try:
             # Check cache first
-            cached_count = self._cache.get(self.CACHE_SPENDING_COUNT, user_id)
+            cached_count = self._dynamic_data_cache.get(self.CACHE_SPENDING_COUNT, user_id)
             if cached_count is not None:
                 logger.debug(f"Cache hit for user {user_id} spending count")
                 return cached_count
@@ -939,7 +1006,7 @@ class Database:
                 logger.debug(f"Total spendings count: {count}")
 
                 # Update cache
-                self._cache.set(self.CACHE_SPENDING_COUNT, user_id, count)
+                self._dynamic_data_cache.set(self.CACHE_SPENDING_COUNT, user_id, count)
                 return count
         except Exception as e:
             logger.error(f"Error fetching spendings count: {e}")
@@ -996,10 +1063,10 @@ class Database:
         try:
             # Create a cache key based on search params
             cache_key = f"search:{user_id}:{query}:{amount}:{offset}:{limit}"
-            cache_type = "search_results"
+            cache_type = self.CACHE_SEARCH_RESULTS
 
             # Check cache first for frequent identical searches
-            cached_results = self._cache.get(cache_type, cache_key)
+            cached_results = self._search_cache.get(cache_type, cache_key)
             if cached_results is not None:
                 logger.debug(f"Cache hit for search results with key {cache_key}")
                 return cached_results
@@ -1013,7 +1080,7 @@ class Database:
                 """
 
                 if query:
-                    # Use full text search when available, fallback to LIKE
+                    # Use user_desc index for better performance
                     sql += " AND LOWER(description) LIKE LOWER(?)"
                     params.append(f"%{query}%")
 
@@ -1029,8 +1096,8 @@ class Database:
                 spendings = [Spending.from_row(tuple(row)) for row in rows]
                 logger.debug(f"Found {len(spendings)} matching spendings")
 
-                # Cache results for short time (30 seconds) for identical searches
-                self._cache.set(cache_type, cache_key, spendings)
+                # Cache results
+                self._search_cache.set(cache_type, cache_key, spendings)
                 return spendings
         except Exception as e:
             logger.error(f"Error searching spendings: {e}")
@@ -1053,10 +1120,10 @@ class Database:
         try:
             # Create a cache key based on search params
             cache_key = f"count:{user_id}:{query}:{amount}"
-            cache_type = "search_count"
+            cache_type = self.CACHE_SEARCH_COUNT
 
             # Check cache first for frequent identical searches
-            cached_count = self._cache.get(cache_type, cache_key)
+            cached_count = self._search_cache.get(cache_type, cache_key)
             if cached_count is not None:
                 logger.debug(f"Cache hit for search count with key {cache_key}")
                 return cached_count
@@ -1078,7 +1145,7 @@ class Database:
                 logger.debug(f"Found {count} total matching spendings")
 
                 # Cache the count result
-                self._cache.set(cache_type, cache_key, count)
+                self._search_cache.set(cache_type, cache_key, count)
                 return count
         except Exception as e:
             logger.error(f"Error counting search results: {e}")
@@ -1135,10 +1202,10 @@ class Database:
         if not is_current_month:
             # Create a cache key for this specific report
             cache_key = f"{user_id}:{year}:{month}"
-            cache_type = "monthly_report"
+            cache_type = self.CACHE_REPORT_DATA
 
             # Check if we have cached results for this report
-            cached_data = self._cache.get(cache_type, cache_key)
+            cached_data = self._reports_cache.get(cache_type, cache_key)
             if cached_data is not None:
                 logger.debug(f"Cache hit for monthly report data with key {cache_key}")
                 return cached_data
@@ -1212,9 +1279,7 @@ class Database:
 
                 # Only cache if not the current month
                 if not is_current_month:
-                    cache_type = "monthly_report"
-                    cache_key = f"{user_id}:{year}:{month}"
-                    self._cache.set(cache_type, cache_key, result)
+                    self._reports_cache.set(self.CACHE_REPORT_DATA, cache_key, result)
                     logger.debug(f"Cached monthly report data with key {cache_key}")
 
                 logger.debug(f"Retrieved comprehensive report data with {len(rows)} records")

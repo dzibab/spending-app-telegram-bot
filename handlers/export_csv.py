@@ -5,7 +5,7 @@ from io import StringIO
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from db import db
+from db import db, Spending
 from handlers.common import log_user_action
 from utils.logging import logger
 
@@ -72,7 +72,7 @@ async def handle_export_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -
 
 
 async def process_export(update: Update, user_id: int, date_range: str) -> None:
-    """Process the actual export based on user selections."""
+    """Process the actual export based on user selections with streaming for large datasets."""
     query = update.callback_query
     output = None
     start_date = None
@@ -95,56 +95,17 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
             start_date = now - timedelta(days=30)
 
         # Get all spendings based on date filter
-        await query.edit_message_text("Preparing your export data...\nThis may take a moment.")
+        await query.edit_message_text(
+            "Preparing your export data...\nThis may take a moment for large datasets."
+        )
 
-        # Use the existing db function or extend it to support date filtering
-        if start_date:
-            # We need to extend the DB class with this function
-            spendings = await db.export_spendings_with_date_range(user_id, start_date, end_date)
-        else:
-            # Use existing function for "all time"
-            spendings = await db.export_all_spendings(user_id)
-
-        if not spendings:
-            log_user_action(user_id, "attempted to export but has no spendings in selected range")
-            await query.edit_message_text(
-                "No spendings found in the selected date range.",
-                reply_markup=InlineKeyboardMarkup(
-                    [
-                        [
-                            InlineKeyboardButton(
-                                "« Back to Export Options", callback_data="export_back:main"
-                            )
-                        ]
-                    ]
-                ),
-            )
-            return
-
-        log_user_action(user_id, f"exporting {len(spendings)} spendings")
-
-        # Create CSV in memory
+        # Create CSV in memory before fetching data to prepare headers
         output = StringIO()
         writer = csv.writer(output)
 
         # Write header
         headers = ["Date", "Description", "Amount", "Currency", "Category"]
         writer.writerow(headers)
-
-        # Write data from Spending objects
-        for spending in spendings:
-            writer.writerow(
-                [
-                    spending.date,
-                    spending.description,
-                    spending.amount,
-                    spending.currency,
-                    spending.category,
-                ]
-            )
-
-        # Prepare file for sending
-        output.seek(0)
 
         # Format date range for filename
         if date_range == "all":
@@ -160,6 +121,36 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
         else:
             date_str = now.strftime("%Y%m%d")
 
+        # Use the optimized streaming approach
+        if start_date:
+            total_count = await process_export_in_chunks(
+                output, writer, user_id, start_date, end_date
+            )
+        else:
+            # Use existing function for "all time" with streaming
+            total_count = await process_export_all_streaming(output, writer, user_id)
+
+        if total_count == 0:
+            log_user_action(user_id, "attempted to export but has no spendings in selected range")
+            await query.edit_message_text(
+                "No spendings found in the selected date range.",
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "« Back to Export Options", callback_data="export_back:main"
+                            )
+                        ]
+                    ]
+                ),
+            )
+            return
+
+        log_user_action(user_id, f"exporting {total_count} spendings")
+
+        # Prepare file for sending
+        output.seek(0)
+
         # Send file
         await query.edit_message_text("Export ready! Sending your file...")
 
@@ -167,7 +158,7 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
             chat_id=query.message.chat_id,
             document=output.getvalue().encode(),
             filename=f"spendings_{date_str}.csv",
-            caption=f"Here are your exported spendings ({len(spendings)} records)",
+            caption=f"Here are your exported spendings ({total_count} records)",
         )
 
         # Show completion message with new export option
@@ -189,7 +180,7 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
             ),
         )
 
-        log_user_action(user_id, f"successfully exported {len(spendings)} spendings to CSV")
+        log_user_action(user_id, f"successfully exported {total_count} spendings to CSV")
 
     except Exception as e:
         log_user_action(user_id, f"error during export: {e}")
@@ -207,3 +198,140 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
                 output.close()
             except Exception as e:
                 logger.error(f"Failed to close StringIO: {e}")
+
+
+async def process_export_in_chunks(output_stream, writer, user_id, start_date, end_date=None):
+    """Process export in chunks to handle large datasets efficiently.
+
+    Args:
+        output_stream: The StringIO instance for writing CSV data
+        writer: CSV writer object
+        user_id: User ID
+        start_date: Start date filter
+        end_date: Optional end date filter
+
+    Returns:
+        Total number of records exported
+    """
+    total_count = 0
+    chunk_size = 1000
+
+    # Begin execution with a chunked query approach
+    async with db.connection() as cursor:
+        params = [user_id]
+        sql = "SELECT * FROM spendings WHERE user_id = ?"
+
+        # Add date filters
+        if start_date:
+            sql += " AND date(date) >= date(?)"
+            params.append(start_date.strftime("%Y-%m-%d"))
+
+        if end_date:
+            sql += " AND date(date) <= date(?)"
+            params.append(end_date.strftime("%Y-%m-%d"))
+
+        # Count total records first (for progress reporting)
+        count_sql = f"SELECT COUNT(*) FROM ({sql})"
+        await cursor.execute(count_sql, params)
+        row = await cursor.fetchone()
+        expected_count = row[0] if row else 0
+
+        if expected_count == 0:
+            return 0
+
+        # Sort by date descending
+        sql += " ORDER BY date DESC, id DESC"
+
+        # Process in chunks
+        offset = 0
+        while True:
+            await cursor.execute(f"{sql} LIMIT {chunk_size} OFFSET {offset}", params)
+            rows = await cursor.fetchall()
+
+            if not rows:
+                break
+
+            # Write chunk to CSV
+            for row in rows:
+                spending = Spending.from_row(tuple(row))
+                writer.writerow(
+                    [
+                        spending.date,
+                        spending.description,
+                        spending.amount,
+                        spending.currency,
+                        spending.category,
+                    ]
+                )
+                total_count += 1
+
+            if len(rows) < chunk_size:
+                break
+
+            offset += chunk_size
+
+    return total_count
+
+
+async def process_export_all_streaming(output_stream, writer, user_id):
+    """Export all data with memory-efficient streaming approach.
+
+    Args:
+        output_stream: StringIO object for the CSV data
+        writer: CSV writer using the output_stream
+        user_id: User ID to export data for
+
+    Returns:
+        Count of exported records
+    """
+    total_count = 0
+    chunk_size = 1000
+
+    # Begin execution with a chunked query approach
+    async with db.connection() as cursor:
+        # Count total records first
+        await cursor.execute("SELECT COUNT(*) FROM spendings WHERE user_id = ?", (user_id,))
+        row = await cursor.fetchone()
+        expected_count = row[0] if row else 0
+
+        if expected_count == 0:
+            return 0
+
+        # Process in chunks
+        offset = 0
+        while True:
+            await cursor.execute(
+                """
+                SELECT *
+                FROM spendings
+                WHERE user_id = ?
+                ORDER BY date DESC, id DESC
+                LIMIT ? OFFSET ?
+                """,
+                (user_id, chunk_size, offset),
+            )
+            rows = await cursor.fetchall()
+
+            if not rows:
+                break
+
+            # Write chunk to CSV
+            for row in rows:
+                spending = Spending.from_row(tuple(row))
+                writer.writerow(
+                    [
+                        spending.date,
+                        spending.description,
+                        spending.amount,
+                        spending.currency,
+                        spending.category,
+                    ]
+                )
+                total_count += 1
+
+            if len(rows) < chunk_size:
+                break
+
+            offset += chunk_size
+
+    return total_count

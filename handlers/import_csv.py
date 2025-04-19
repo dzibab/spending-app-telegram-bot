@@ -298,60 +298,48 @@ async def handle_file_upload(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def process_csv_import(user_id: int, csv_content: io.StringIO) -> str:
-    """Process the CSV file content and import the spendings.
+    """Process CSV import and return a result summary."""
+    logger.info(f"Starting CSV import for user {user_id}")
 
-    Args:
-        user_id: The user's Telegram ID
-        csv_content: StringIO object with CSV content
-
-    Returns:
-        Result message to show to the user
-    """
-    # Statistics for reporting
+    # Initialize statistics
     stats = {
         "success": 0,
         "failed": 0,
+        "errors": [],
         "new_categories": set(),
         "new_currencies": set(),
-        "errors": [],
     }
 
-    log_user_action(user_id, "processing CSV import")
-
+    # Collect user categories and currencies for validation
     try:
-        # Get existing user categories and currencies
         user_categories = set(await db.get_user_categories(user_id))
         user_currencies = set(await db.get_user_currencies(user_id))
+    except Exception as e:
+        logger.error(f"Error fetching user data for import: {e}")
+        return f"Import failed: {e}"
 
-        # Read CSV
-        reader = csv.reader(csv_content)
+    # Parse CSV file
+    reader = csv.reader(csv_content)
+    try:
+        # Get headers from first row
+        headers = [h.strip().lower() for h in next(reader)]
 
-        # Parse header and check required columns
-        try:
-            headers = [h.strip().lower() for h in next(reader)]
-            required_fields = ["date", "amount", "currency", "category"]
-            found_fields = [field for field in required_fields if field in headers]
+        # Find column indexes
+        date_idx = next((i for i, h in enumerate(headers) if "date" in h), None)
+        amount_idx = next((i for i, h in enumerate(headers) if "amount" in h), None)
+        currency_idx = next((i for i, h in enumerate(headers) if "currency" in h), None)
+        category_idx = next((i for i, h in enumerate(headers) if "category" in h), None)
+        description_idx = next((i for i, h in enumerate(headers) if "description" in h), None)
 
-            # Verify that all required fields are present
-            if len(found_fields) < len(required_fields):
-                missing = set(required_fields) - set(found_fields)
-                return f"❌ Import failed: Missing required columns: {', '.join(missing)}"
+        # Validate required columns
+        if None in (date_idx, amount_idx, currency_idx, category_idx):
+            return "CSV header must include Date, Amount, Currency, and Category columns."
 
-            # Get column indexes
-            date_idx = headers.index("date")
-            amount_idx = headers.index("amount")
-            currency_idx = headers.index("currency")
-            category_idx = headers.index("category")
-            # Description is optional
-            description_idx = headers.index("description") if "description" in headers else None
-
-        except StopIteration:
-            return "❌ Import failed: CSV file is empty or has no headers."
-        except ValueError:
-            return "❌ Import failed: CSV format is incorrect or missing required columns."
+        # Prepare for bulk insert
+        valid_spendings = []
 
         # Process each row
-        for row_num, row in enumerate(reader, start=2):  # Start at 2 to account for header row
+        for row_num, row in enumerate(reader, start=2):  # Start from 2 to account for header row
             if not row or len(row) < 4:  # Skip empty rows
                 stats["errors"].append(f"Row {row_num}: Empty or incomplete row")
                 stats["failed"] += 1
@@ -401,66 +389,62 @@ async def process_csv_import(user_id: int, csv_content: io.StringIO) -> str:
                     else ""
                 )
 
-                # Add new categories and currencies as needed
+                # Track new categories and currencies (we'll add them in batch later)
                 if category not in user_categories:
-                    await db.add_category_to_user(user_id, category)
                     user_categories.add(category)
                     stats["new_categories"].add(category)
 
                 if currency not in user_currencies:
-                    await db.add_currency_to_user(user_id, currency)
                     user_currencies.add(currency)
                     stats["new_currencies"].add(currency)
 
-                    # If this is the first currency, also set it as main
-                    if len(user_currencies) == 1:
-                        await db.set_user_main_currency(user_id, currency)
-
-                # Add the spending to the database
-                await db.add_spending(
-                    user_id, description, amount, currency, category, formatted_date
+                # Add to list of valid spendings for bulk insert
+                valid_spendings.append(
+                    (user_id, description, amount, currency, category, formatted_date)
                 )
                 stats["success"] += 1
 
             except Exception as e:
-                stats["errors"].append(f"Row {row_num}: {e}")
+                stats["errors"].append(f"Row {row_num}: Unexpected error: {e}")
                 stats["failed"] += 1
 
-    except Exception as e:
-        log_user_action(user_id, f"error during CSV import: {e}")
-        return f"❌ Import failed: {e}"
+        # Now add new categories and currencies
+        for category in stats["new_categories"]:
+            await db.add_category_to_user(user_id, category)
 
-    # Create result message
-    result = f"✅ Import completed: {stats['success']} spendings imported successfully"
+        for currency in stats["new_currencies"]:
+            await db.add_currency_to_user(user_id, currency)
 
-    if stats["failed"] > 0:
-        result += f", {stats['failed']} failed"
+        # Bulk insert all valid spendings at once
+        if valid_spendings:
+            inserted = await db.bulk_add_spendings(valid_spendings)
+            if inserted != stats["success"]:
+                logger.warning(f"Bulk insert expected {stats['success']} but inserted {inserted}")
 
-    if stats["new_categories"]:
-        result += f"\n\nAdded {len(stats['new_categories'])} new categories: {', '.join(stats['new_categories'])}"
+        # Generate result message
+        result = f"Import completed: {stats['success']} spendings imported successfully"
+        if stats["failed"] > 0:
+            result += f", {stats['failed']} failed"
 
-    if stats["new_currencies"]:
-        result += f"\n\nAdded {len(stats['new_currencies'])} new currencies: {', '.join(stats['new_currencies'])}"
+        if stats["new_categories"]:
+            result += f"\n\nAdded {len(stats['new_categories'])} new categories: {', '.join(stats['new_categories'])}"
 
-        # Mention if a main currency was set
-        if (
-            len(user_currencies) == len(stats["new_currencies"])
-            and len(stats["new_currencies"]) == 1
-        ):
-            first_currency = next(iter(stats["new_currencies"]))
-            result += f"\nSet {first_currency} as your main currency"
+        if stats["new_currencies"]:
+            result += f"\n\nAdded {len(stats['new_currencies'])} new currencies: {', '.join(stats['new_currencies'])}"
 
-    if stats["errors"] and len(stats["errors"]) <= 5:
-        result += "\n\nErrors:\n" + "\n".join(stats["errors"])
-    elif stats["errors"]:
-        result += f"\n\nFirst 5 errors (of {len(stats['errors'])} total):\n" + "\n".join(
-            stats["errors"][:5]
+        if stats["errors"]:
+            result += f"\n\nFirst 5 errors (of {len(stats['errors'])} total):\n" + "\n".join(
+                stats["errors"][:5]
+            )
+
+        log_user_action(
+            user_id,
+            f"completed CSV import: {stats['success']} successful, {stats['failed']} failed",
         )
-
-    log_user_action(
-        user_id, f"completed CSV import: {stats['success']} successful, {stats['failed']} failed"
-    )
-    return result
+        return result
+    except Exception as e:
+        logger.error(f"CSV import error: {e}")
+        return f"Error processing CSV file: {e}"
 
 
 # Create the conversation handler for import
