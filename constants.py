@@ -32,7 +32,7 @@ BOT_COMMANDS = {
         "frequency": "high",
         "category": "essential",
     },
-    "search_spending": {
+    "search": {
         "command": "search",
         "description": "Search spendings",
         "help": "Search spendings by amount or description",
@@ -49,38 +49,37 @@ BOT_COMMANDS = {
     "settings": {
         "command": "settings",
         "description": "Manage settings and utilities",
-        "help": "Access less frequently used commands and settings",
+        "help": "Access settings for categories, currencies, and data management",
         "frequency": "medium",
         "category": "essential",
     },
-    "add_category": {
+    # These commands are kept for reference but are no longer directly accessible
+    "_add_category": {
         "command": "add_category",
         "description": "Add a category",
         "help": "Add a new spending category",
-        "frequency": "low",
+        "frequency": "none",  # Set to none to exclude from command registration
         "category": "category_settings",
     },
-    # Removed "remove_category" command as it's now handled in the settings menu
-    "add_currency": {
+    "_add_currency": {
         "command": "add_currency",
         "description": "Add a currency",
         "help": "Add a new currency",
-        "frequency": "low",
+        "frequency": "none",  # Set to none to exclude from command registration
         "category": "currency_settings",
     },
-    # Removed "main_currency" command as it's now handled in the settings menu
-    "export": {
+    "_export": {
         "command": "export",
         "description": "Export spendings",
         "help": "Download your spendings as a CSV file",
-        "frequency": "low",
+        "frequency": "none",  # Set to none to exclude from command registration
         "category": "data_management",
     },
-    "import": {
+    "_import": {
         "command": "import",
         "description": "Import spendings",
         "help": "Upload a CSV file with spendings to import",
-        "frequency": "low",
+        "frequency": "none",  # Set to none to exclude from command registration
         "category": "data_management",
     },
 }
@@ -92,5 +91,7 @@ ITEMS_PER_PAGE = 5  # Number of items to show per page in list and remove views
 BOT_USAGE_INSTRUCTIONS = "\n".join(
     f"Use /{cmd_info['command']}: {cmd_info['help']}."
     for cmd_info in BOT_COMMANDS.values()
-    if cmd_info["command"] != "start"  # Skip start command in instructions
+    if cmd_info["command"] != "start"
+    and cmd_info.get("frequency")
+    != "none"  # Skip start command and hidden commands in instructions
 )

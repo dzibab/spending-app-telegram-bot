@@ -13,20 +13,16 @@ from telegram.ext import (
 from config import BOT_TOKEN
 from constants import BOT_COMMANDS
 from db import db
-from handlers.category import (
-    add_category_conversation_handler,
-)
-from handlers.export_csv import export_spendings_handler, handle_export_callback
+from handlers.export_csv import handle_export_callback
 from handlers.import_csv import (
     handle_csv_file_upload,
     handle_import_cancel,
     handle_import_confirmation,
-    import_conversation_handler,
     send_import_template,
 )
 from handlers.list import handle_list_callback, list_spendings_handler
 from handlers.report import handle_chart_callback, handle_report_callback, report_handler
-from handlers.search import handle_search_callback, search_conversation_handler
+from handlers.search import handle_search_callback, search_conversation_handler, start_search
 from handlers.settings.category import (
     handle_add_category,
     handle_remove_category,
@@ -59,7 +55,9 @@ async def post_init(application: Application) -> None:
     frequently_used_commands = [
         BotCommand(cmd_info["command"], cmd_info["description"])
         for _, cmd_info in BOT_COMMANDS.items()
-        if cmd_info.get("frequency") in ["high", "medium"] and cmd_info.get("command") != "start"
+        if cmd_info.get("frequency") not in ["none"]
+        and cmd_info.get("frequency") in ["high", "medium"]
+        and cmd_info.get("command") != "start"
     ]
 
     await application.bot.set_my_commands(frequently_used_commands)
@@ -124,7 +122,7 @@ if __name__ == "__main__":
         CommandHandler(BOT_COMMANDS["start"]["command"], start_handler),
         CommandHandler(BOT_COMMANDS["list"]["command"], list_spendings_handler),
         CommandHandler(BOT_COMMANDS["report"]["command"], report_handler),
-        CommandHandler(BOT_COMMANDS["export"]["command"], export_spendings_handler),
+        CommandHandler(BOT_COMMANDS["search"]["command"], start_search),
         CommandHandler(BOT_COMMANDS["settings"]["command"], settings_handler),
         # Settings menu handlers
         CallbackQueryHandler(handle_settings_action, pattern=r"^settings_action:"),
@@ -154,9 +152,7 @@ if __name__ == "__main__":
         CallbackQueryHandler(handle_import_confirmation, pattern=r"^import_confirm:"),
         # Conversation handlers
         add_spending_conversation_handler,
-        add_category_conversation_handler,
         search_conversation_handler,
-        import_conversation_handler,
         # Add a handler for custom input text messages
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text_input),
         # CSV file upload handler - placed at the top for highest priority
