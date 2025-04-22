@@ -156,7 +156,7 @@ async def handle_csv_file_upload(update: Update, context: ContextTypes.DEFAULT_T
             ]
             await update.message.reply_text(
                 f"❌ {error_message}",
-                reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+                reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
             )
             return
 
@@ -165,7 +165,7 @@ async def handle_csv_file_upload(update: Update, context: ContextTypes.DEFAULT_T
             # Store the analyzed data for later import
             context.user_data["csv_import_data"] = {
                 "stats": stats,
-                "valid_spendings": valid_spendings
+                "valid_spendings": valid_spendings,
             }
 
             # Create confirmation message
@@ -191,14 +191,11 @@ async def handle_csv_file_upload(update: Update, context: ContextTypes.DEFAULT_T
             keyboard = [
                 [
                     InlineKeyboardButton("✅ Yes, Import", callback_data="import_confirm:proceed"),
-                    InlineKeyboardButton("❌ No, Cancel", callback_data="import_confirm:cancel")
+                    InlineKeyboardButton("❌ No, Cancel", callback_data="import_confirm:cancel"),
                 ]
             ]
 
-            await update.message.reply_text(
-                message,
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
+            await update.message.reply_text(message, reply_markup=InlineKeyboardMarkup(keyboard))
 
         else:
             # No valid entries found
@@ -215,8 +212,7 @@ async def handle_csv_file_upload(update: Update, context: ContextTypes.DEFAULT_T
             ]
 
             await update.message.reply_text(
-                error_message,
-                reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+                error_message, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
             )
 
     except Exception as e:
@@ -290,7 +286,7 @@ async def handle_file_upload(update: Update, context: ContextTypes.DEFAULT_TYPE)
             ]
             await update.message.reply_text(
                 f"❌ {error_message}",
-                reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+                reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None,
             )
             return UPLOAD_FILE
 
@@ -299,7 +295,7 @@ async def handle_file_upload(update: Update, context: ContextTypes.DEFAULT_TYPE)
             # Store the analyzed data for later import
             context.user_data["csv_import_data"] = {
                 "stats": stats,
-                "valid_spendings": valid_spendings
+                "valid_spendings": valid_spendings,
             }
 
             # Create confirmation message
@@ -325,14 +321,11 @@ async def handle_file_upload(update: Update, context: ContextTypes.DEFAULT_TYPE)
             keyboard = [
                 [
                     InlineKeyboardButton("✅ Yes, Import", callback_data="import_confirm:proceed"),
-                    InlineKeyboardButton("❌ No, Cancel", callback_data="import_confirm:cancel")
+                    InlineKeyboardButton("❌ No, Cancel", callback_data="import_confirm:cancel"),
                 ]
             ]
 
-            await update.message.reply_text(
-                message,
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
+            await update.message.reply_text(message, reply_markup=InlineKeyboardMarkup(keyboard))
 
             return CONFIRM_IMPORT
         else:
@@ -350,8 +343,7 @@ async def handle_file_upload(update: Update, context: ContextTypes.DEFAULT_TYPE)
             ]
 
             await update.message.reply_text(
-                error_message,
-                reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+                error_message, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
             )
             return UPLOAD_FILE
 
@@ -573,7 +565,9 @@ async def analyze_csv_import(user_id: int, csv_content: io.StringIO) -> tuple[di
 
         # Validate required columns
         if None in (date_idx, amount_idx, currency_idx, category_idx):
-            stats["errors"].append("CSV header must include Date, Amount, Currency, and Category columns.")
+            stats["errors"].append(
+                "CSV header must include Date, Amount, Currency, and Category columns."
+            )
             return stats, []
 
         # Process each row
@@ -668,7 +662,9 @@ async def handle_import_confirmation(update: Update, context: ContextTypes.DEFAU
             "Import cancelled. Your data was not imported.",
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("« Back to Import", callback_data="settings_action:import")]]
-            ) if context.user_data.get("import_from_settings") else None
+            )
+            if context.user_data.get("import_from_settings")
+            else None,
         )
 
         # Clear import-related data
@@ -689,8 +685,16 @@ async def handle_import_confirmation(update: Update, context: ContextTypes.DEFAU
             await query.edit_message_text(
                 "❌ Import data not found. Please start over.",
                 reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton("« Back to Import", callback_data="settings_action:import")]]
-                ) if context.user_data.get("import_from_settings") else None
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "« Back to Import", callback_data="settings_action:import"
+                            )
+                        ]
+                    ]
+                )
+                if context.user_data.get("import_from_settings")
+                else None,
             )
             return ConversationHandler.END
 
@@ -712,7 +716,9 @@ async def handle_import_confirmation(update: Update, context: ContextTypes.DEFAU
             if valid_spendings:
                 inserted = await db.bulk_add_spendings(valid_spendings)
                 if inserted != stats["success"]:
-                    logger.warning(f"Bulk insert expected {stats['success']} but inserted {inserted}")
+                    logger.warning(
+                        f"Bulk insert expected {stats['success']} but inserted {inserted}"
+                    )
 
             # Generate result message
             result = f"✅ Import completed: {stats['success']} spendings imported successfully"
@@ -725,14 +731,25 @@ async def handle_import_confirmation(update: Update, context: ContextTypes.DEFAU
                 )
 
             # Return results to user
-            keyboard = [
-                [InlineKeyboardButton("Import Another File", callback_data="settings_action:import")],
-                [InlineKeyboardButton("« Back to Settings", callback_data="settings_back:main")]
-            ] if context.user_data.get("import_from_settings") else []
+            keyboard = (
+                [
+                    [
+                        InlineKeyboardButton(
+                            "Import Another File", callback_data="settings_action:import"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "« Back to Settings", callback_data="settings_back:main"
+                        )
+                    ],
+                ]
+                if context.user_data.get("import_from_settings")
+                else []
+            )
 
             await query.edit_message_text(
-                result,
-                reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+                result, reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
             )
 
             log_user_action(
@@ -754,8 +771,16 @@ async def handle_import_confirmation(update: Update, context: ContextTypes.DEFAU
             await query.edit_message_text(
                 error_message,
                 reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton("« Back to Import", callback_data="settings_action:import")]]
-                ) if context.user_data.get("import_from_settings") else None
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "« Back to Import", callback_data="settings_action:import"
+                            )
+                        ]
+                    ]
+                )
+                if context.user_data.get("import_from_settings")
+                else None,
             )
 
             await handle_db_error(update, "importing spendings", e)

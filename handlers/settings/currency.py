@@ -6,6 +6,12 @@ from telegram.ext import ContextTypes
 from db import db
 from handlers.common import handle_db_error, log_user_action
 from handlers.settings.utils import create_back_button, create_error_keyboard, get_common_currencies
+from utils.currency_utils import (
+    add_currency_to_user,
+    remove_currency,
+    restore_archived_currency,
+    set_main_currency,
+)
 from utils.logging import logger
 
 
@@ -239,16 +245,10 @@ async def handle_add_currency(update: Update, _: ContextTypes.DEFAULT_TYPE) -> N
     log_user_action(user_id, f"adding currency {currency} from settings")
 
     try:
-        success = await db.add_currency_to_user(user_id, currency)
-        if success:
-            # If this is the first currency, also set it as main
-            currencies = await db.get_user_currencies(user_id)
-            if len(currencies) == 1:
-                await db.set_user_main_currency(user_id, currency)
-                message = f"Currency {currency} has been added and set as your main currency!"
-            else:
-                message = f"Currency {currency} has been successfully added!"
+        # Use the shared business logic utility
+        success, message = await add_currency_to_user(user_id, currency)
 
+        if success:
             # Show success message with options to add more or go back
             keyboard = [
                 [
@@ -267,7 +267,7 @@ async def handle_add_currency(update: Update, _: ContextTypes.DEFAULT_TYPE) -> N
             )
         else:
             await query.edit_message_text(
-                "Failed to add currency. It might already exist or there was an error.",
+                f"❌ {message}",
                 reply_markup=InlineKeyboardMarkup(
                     [[create_back_button("settings_action:add_currency")]]
                 ),
@@ -343,37 +343,32 @@ async def handle_restore_currency(update: Update, _: ContextTypes.DEFAULT_TYPE) 
     currency = query.data.split(":")[1]
     log_user_action(user_id, f"restoring archived currency {currency}")
 
-    try:
-        success = await db.unarchive_currency(user_id, currency)
-        if success:
-            keyboard = [
-                [
-                    InlineKeyboardButton(
-                        "Restore Another", callback_data="settings_action:restore_currency"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "« Back to Currency Settings", callback_data="settings_section:currency"
-                    )
-                ],
-            ]
-            await query.edit_message_text(
-                f"✅ Currency {currency} has been successfully restored!",
-                reply_markup=InlineKeyboardMarkup(keyboard),
-            )
-        else:
-            await query.edit_message_text(
-                "Failed to restore currency. It might not exist or there was an error.",
-                reply_markup=InlineKeyboardMarkup(
-                    [[create_back_button("settings_action:restore_currency")]]
-                ),
-            )
-    except Exception as e:
-        await handle_db_error(query, f"restoring currency {currency}", e)
+    # Use shared business logic
+    success, message = await restore_archived_currency(user_id, currency)
+
+    if success:
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "Restore Another", callback_data="settings_action:restore_currency"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "« Back to Currency Settings", callback_data="settings_section:currency"
+                )
+            ],
+        ]
         await query.edit_message_text(
-            f"❌ Error restoring currency: {e}",
-            reply_markup=create_error_keyboard("settings_action:restore_currency"),
+            f"✅ {message}",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    else:
+        await query.edit_message_text(
+            f"❌ {message}",
+            reply_markup=InlineKeyboardMarkup(
+                [[create_back_button("settings_action:restore_currency")]]
+            ),
         )
 
 
@@ -381,61 +376,29 @@ async def process_currency_removal(update: Update, user_id: int, currency: str) 
     """Process the actual archiving of a currency."""
     query = update.callback_query
 
-    try:
-        # Check if currency is set as main currency
-        current_main = await db.get_user_main_currency(user_id)
-        if current_main == currency:
-            # Remove from main_currency table
-            await db.remove_user_main_currency(user_id)
-            log_user_action(user_id, f"removed main currency {currency}")
+    # Use shared business logic (with archive=True as this is the settings method)
+    success, message, was_main = await remove_currency(user_id, currency, archive=True)
 
-            # Try to set another currency as main if available
-            currencies = await db.get_user_currencies(user_id)
-            currencies = [c for c in currencies if c != currency]
-            if currencies:
-                await db.set_user_main_currency(user_id, currencies[0])
-                log_user_action(user_id, f"automatically set {currencies[0]} as new main currency")
-
-        # Archive the currency instead of removing it
-        success = await db.archive_currency(user_id, currency)
-        if success:
-            keyboard = [
-                [
-                    InlineKeyboardButton(
-                        "Archive Another Currency", callback_data="settings_action:remove_currency"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "« Back to Currency Settings", callback_data="settings_section:currency"
-                    )
-                ],
-            ]
-
-            # Customize message based on whether it was a main currency
-            if current_main == currency:
-                message = f"✅ Currency {currency} has been archived."
-                if await db.get_user_main_currency(user_id):
-                    new_main = await db.get_user_main_currency(user_id)
-                    message += f"\n\n{new_main} has been set as your new main currency."
-            else:
-                message = f"✅ Currency {currency} has been successfully archived!"
-
-            message += "\n\nThe currency will still be available for historical data and reports, but won't appear in selection menus."
-
-            await query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard))
-        else:
-            await query.edit_message_text(
-                "Failed to archive currency. It might not exist or there was an error.",
-                reply_markup=InlineKeyboardMarkup(
-                    [[create_back_button("settings_action:remove_currency")]]
-                ),
-            )
-    except Exception as e:
-        logger.error(f"Error processing currency archival: {e}")
+    if success:
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "Archive Another Currency", callback_data="settings_action:remove_currency"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "« Back to Currency Settings", callback_data="settings_section:currency"
+                )
+            ],
+        ]
+        await query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
         await query.edit_message_text(
-            f"❌ Error archiving currency: {e}",
-            reply_markup=create_error_keyboard("settings_action:remove_currency"),
+            message,
+            reply_markup=InlineKeyboardMarkup(
+                [[create_back_button("settings_action:remove_currency")]]
+            ),
         )
 
 
@@ -446,11 +409,11 @@ async def handle_set_main_currency(update: Update, _: ContextTypes.DEFAULT_TYPE)
     user_id = query.from_user.id
 
     currency = query.data.split(":")[1]
-    log_user_action(user_id, f"setting main currency to {currency}")
 
-    try:
-        await db.set_user_main_currency(user_id, currency)
+    # Use shared business logic
+    success, message = await set_main_currency(user_id, currency)
 
+    if success:
         keyboard = [
             [
                 InlineKeyboardButton(
@@ -458,12 +421,9 @@ async def handle_set_main_currency(update: Update, _: ContextTypes.DEFAULT_TYPE)
                 )
             ]
         ]
+        await query.edit_message_text(f"✅ {message}", reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
         await query.edit_message_text(
-            f"✅ Main currency set to {currency}", reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-    except Exception as e:
-        await handle_db_error(query, f"setting main currency to {currency}", e)
-        await query.edit_message_text(
-            f"❌ Error setting main currency: {e}",
+            f"❌ {message}",
             reply_markup=create_error_keyboard("settings_action:main_currency"),
         )

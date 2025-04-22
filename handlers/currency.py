@@ -10,6 +10,7 @@ from telegram.ext import (
 from constants import BOT_COMMANDS
 from db import db
 from handlers.common import cancel, handle_db_error, log_user_action
+from utils.currency_utils import add_currency_to_user, remove_currency, set_main_currency
 from utils.validation import validate_currency_code
 
 # Define states for the conversation
@@ -40,34 +41,13 @@ async def handle_currency_input(update: Update, _: CallbackContext):
     # Convert to uppercase for consistency
     currency = currency.upper()
 
-    try:
-        # Check if currency already exists for this user
-        existing_currencies = await db.get_user_currencies(user_id)
-        if currency in existing_currencies:
-            await update.message.reply_text(f"❌ You already have {currency} in your currencies.")
-            return ConversationHandler.END
+    # Use the shared business logic utility
+    success, message = await add_currency_to_user(user_id, currency)
 
-        success = await db.add_currency_to_user(user_id, currency)
-        if success:
-            log_user_action(user_id, f"added currency {currency}")
-
-            # Check if this is the first currency and set as main if so
-            currencies = await db.get_user_currencies(user_id)
-            if len(currencies) == 1:
-                await db.set_user_main_currency(user_id, currency)
-                await update.message.reply_text(
-                    f"✅ Currency {currency} has been added and set as your main currency!"
-                )
-            else:
-                await update.message.reply_text(
-                    f"✅ Currency {currency} has been successfully added!"
-                )
-        else:
-            await update.message.reply_text(
-                "❌ Failed to add currency. It might already exist or there was an error."
-            )
-    except Exception as e:
-        await handle_db_error(update, f"adding currency {currency}", e)
+    if success:
+        await update.message.reply_text(f"✅ {message}")
+    else:
+        await update.message.reply_text(f"❌ {message}")
 
     return ConversationHandler.END
 
@@ -146,15 +126,13 @@ async def handle_remove_currency_callback(update: Update, _: CallbackContext):
             )
             return
 
-        # Not a main currency, proceed with removal
-        success = await db.remove_currency_from_user(user_id, currency)
+        # Not a main currency, proceed with removal (don't archive, completely remove for backward compatibility)
+        success, message, _ = await remove_currency(user_id, currency, archive=False)
+
         if success:
-            log_user_action(user_id, f"removed currency {currency}")
-            await query.edit_message_text(f"✅ Currency {currency} has been successfully removed!")
+            await query.edit_message_text(f"✅ {message}")
         else:
-            await query.edit_message_text(
-                "❌ Failed to remove currency. It might not exist or there was an error."
-            )
+            await query.edit_message_text(f"❌ {message}")
     except Exception as e:
         error_msg = f"Error removing currency {currency}: {e}"
         await query.edit_message_text(f"❌ {error_msg}")
@@ -169,35 +147,13 @@ async def handle_confirm_remove_currency(update: Update, _: CallbackContext):
     data = query.data
     currency = data.split(":")[1]
 
-    try:
-        # Remove from main_currency table first
-        await db.remove_user_main_currency(user_id)
-        log_user_action(user_id, f"removed main currency {currency}")
+    # Use shared business logic to remove the currency (don't archive for backward compatibility)
+    success, message, _ = await remove_currency(user_id, currency, archive=False)
 
-        # Find new main currency if any other currencies exist
-        currencies = await db.get_user_currencies(user_id)
-        other_currencies = [c for c in currencies if c != currency]
-        if other_currencies:
-            new_main = other_currencies[0]
-            await db.set_user_main_currency(user_id, new_main)
-            log_user_action(user_id, f"automatically set {new_main} as new main currency")
-
-        # Remove the currency
-        success = await db.remove_currency_from_user(user_id, currency)
-        if success:
-            message = f"✅ Currency {currency} has been removed from your currencies."
-            if other_currencies:
-                new_main = await db.get_user_main_currency(user_id)
-                message += f"\n\n{new_main} has been set as your new main currency."
-
-            await query.edit_message_text(message)
-        else:
-            await query.edit_message_text(
-                "❌ Failed to remove currency. It might not exist or there was an error."
-            )
-    except Exception as e:
-        error_msg = f"Error removing currency {currency}: {e}"
-        await query.edit_message_text(f"❌ {error_msg}")
+    if success:
+        await query.edit_message_text(f"✅ {message}")
+    else:
+        await query.edit_message_text(f"❌ {message}")
 
 
 async def handle_cancel_remove_currency(update: Update, _: CallbackContext):
