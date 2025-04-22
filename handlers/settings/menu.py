@@ -8,7 +8,16 @@ from handlers.common import log_user_action
 
 async def settings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Handler for /settings command - displays a menu of less frequently used commands."""
-    user_id = update.effective_user.id
+    # Get the user_id safely, handling both Update and Message objects
+    if hasattr(update, "effective_user"):
+        user_id = update.effective_user.id
+    elif hasattr(update, "from_user"):
+        user_id = update.from_user.id
+    else:
+        # Fallback for the case when we get a Message directly
+        chat_id = update.chat.id if hasattr(update, "chat") else None
+        user_id = chat_id  # Use chat_id as a fallback if we can't get user_id
+
     log_user_action(user_id, "accessed settings menu")
 
     # Create the settings menu with grouped options
@@ -23,11 +32,20 @@ async def settings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text(
-        "⚙️ *Settings Menu*\n\nSelect a settings category below:",
-        reply_markup=reply_markup,
-        parse_mode="Markdown",
-    )
+    # Send the message, handling both Update and Message objects
+    if hasattr(update, "message"):
+        await update.message.reply_text(
+            "⚙️ *Settings Menu*\n\nSelect a settings category below:",
+            reply_markup=reply_markup,
+            parse_mode="Markdown",
+        )
+    else:
+        # Assume we have a Message object directly
+        await update.reply_text(
+            "⚙️ *Settings Menu*\n\nSelect a settings category below:",
+            reply_markup=reply_markup,
+            parse_mode="Markdown",
+        )
 
 
 async def handle_settings_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
@@ -37,50 +55,84 @@ async def handle_settings_callback(update: Update, _: ContextTypes.DEFAULT_TYPE)
     user_id = query.from_user.id
 
     data = query.data.split(":")
+    section_type = data[0]
     section = data[1] if len(data) > 1 else None
 
-    if section == "currency":
-        await show_currency_section(update, _)
+    # Import here to avoid circular imports
+    match section_type:
+        case "settings_section":
+            # Show specific section
+            log_user_action(user_id, f"viewing settings section: {section}")
 
-    elif section == "category":
-        await show_category_section(update, _)
+            if section == "currency":
+                await show_currency_section(update, _)
+            elif section == "category":
+                await show_category_section(update, _)
+            elif section == "data":
+                await show_data_section(update, _)
 
-    elif section == "data":
-        log_user_action(user_id, "accessed data management settings")
-        keyboard = [
-            [InlineKeyboardButton("📤 Export Spendings", callback_data="settings_action:export")],
-            [InlineKeyboardButton("📥 Import Spendings", callback_data="settings_action:import")],
-            [InlineKeyboardButton("« Back", callback_data="settings_back:main")],
-        ]
-        text = "📊 *Data Management*\n\nImport or export your spending data:"
+        case "settings_back":
+            # Handle back navigation
+            if section == "main":
+                # Return to main settings menu using edit_message_text instead of creating a new message
+                log_user_action(user_id, "returning to main settings menu")
 
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="Markdown")
+                keyboard = [
+                    # Currency Settings Group
+                    [
+                        InlineKeyboardButton(
+                            "💱 Currency Settings", callback_data="settings_section:currency"
+                        )
+                    ],
+                    # Category Settings Group
+                    [
+                        InlineKeyboardButton(
+                            "📋 Category Settings", callback_data="settings_section:category"
+                        )
+                    ],
+                    # Data Management Group
+                    [
+                        InlineKeyboardButton(
+                            "📊 Data Management", callback_data="settings_section:data"
+                        )
+                    ],
+                ]
 
-    else:
-        # Return to main settings menu
-        log_user_action(user_id, "returned to main settings menu")
-        # Create the main settings menu with grouped options
-        keyboard = [
-            # Currency Settings Group
-            [
-                InlineKeyboardButton(
-                    "💱 Currency Settings", callback_data="settings_section:currency"
+                await query.edit_message_text(
+                    "⚙️ *Settings Menu*\n\nSelect a settings category below:",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode="Markdown",
                 )
-            ],
-            # Category Settings Group
-            [
-                InlineKeyboardButton(
-                    "📋 Category Settings", callback_data="settings_section:category"
-                )
-            ],
-            # Data Management Group
-            [InlineKeyboardButton("📊 Data Management", callback_data="settings_section:data")],
-        ]
-        text = "⚙️ *Settings Menu*\n\nSelect a settings category below:"
+            else:
+                # For now, always return to main settings
+                log_user_action(user_id, f"navigating back from {section}")
 
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="Markdown")
+                keyboard = [
+                    # Currency Settings Group
+                    [
+                        InlineKeyboardButton(
+                            "💱 Currency Settings", callback_data="settings_section:currency"
+                        )
+                    ],
+                    # Category Settings Group
+                    [
+                        InlineKeyboardButton(
+                            "📋 Category Settings", callback_data="settings_section:category"
+                        )
+                    ],
+                    # Data Management Group
+                    [
+                        InlineKeyboardButton(
+                            "📊 Data Management", callback_data="settings_section:data"
+                        )
+                    ],
+                ]
+
+                await query.edit_message_text(
+                    "⚙️ *Settings Menu*\n\nSelect a settings category below:",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode="Markdown",
+                )
 
 
 async def handle_settings_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -95,14 +147,12 @@ async def handle_settings_action(update: Update, context: ContextTypes.DEFAULT_T
     # Import these here to avoid circular imports
     from handlers.settings.category import (
         show_add_category_options,
-        show_archived_category_options,
-        show_remove_category_options,
+        show_manage_categories,
     )
     from handlers.settings.currency import (
         show_add_currency_options,
-        show_archived_currency_options,
         show_main_currency_options,
-        show_remove_currency_options,
+        show_manage_currencies,
     )
 
     match action:
@@ -110,13 +160,9 @@ async def handle_settings_action(update: Update, context: ContextTypes.DEFAULT_T
             # Show common currencies to add
             await show_add_currency_options(update, user_id)
 
-        case "remove_currency":
-            # Show user currencies to archive
-            await show_remove_currency_options(update, user_id)
-
-        case "restore_currency":
-            # Show archived currencies to restore
-            await show_archived_currency_options(update, user_id)
+        case "manage_currencies":
+            # Show interface for managing currencies (activate/deactivate)
+            await show_manage_currencies(update, user_id)
 
         case "main_currency":
             # Show currency selection for setting main currency
@@ -126,13 +172,9 @@ async def handle_settings_action(update: Update, context: ContextTypes.DEFAULT_T
             # Show common categories to add
             await show_add_category_options(update, user_id)
 
-        case "remove_category":
-            # Show user categories to archive
-            await show_remove_category_options(update, user_id)
-
-        case "restore_category":
-            # Show archived categories to restore
-            await show_archived_category_options(update, user_id)
+        case "manage_categories":
+            # Show interface for managing categories (activate/deactivate)
+            await show_manage_categories(update, user_id)
 
         case "export":
             # Use the new interactive export handler
@@ -192,12 +234,7 @@ async def show_currency_section(update: Update, _: ContextTypes.DEFAULT_TYPE) ->
         [InlineKeyboardButton("➕ Add Currency", callback_data="settings_action:add_currency")],
         [
             InlineKeyboardButton(
-                "🗄️ Archive Currency", callback_data="settings_action:remove_currency"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "🔄 Restore Currency", callback_data="settings_action:restore_currency"
+                "🔧 Manage Currencies", callback_data="settings_action:manage_currencies"
             )
         ],
         [
@@ -209,7 +246,7 @@ async def show_currency_section(update: Update, _: ContextTypes.DEFAULT_TYPE) ->
     ]
 
     await query.edit_message_text(
-        "📊 *Currency Settings*\n\nManage your currencies:",
+        "💱 *Currency Settings*\n\nManage your currencies:",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown",
     )
@@ -227,19 +264,35 @@ async def show_category_section(update: Update, _: ContextTypes.DEFAULT_TYPE) ->
         [InlineKeyboardButton("➕ Add Category", callback_data="settings_action:add_category")],
         [
             InlineKeyboardButton(
-                "🗄️ Archive Category", callback_data="settings_action:remove_category"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "🔄 Restore Category", callback_data="settings_action:restore_category"
+                "🔧 Manage Categories", callback_data="settings_action:manage_categories"
             )
         ],
         [InlineKeyboardButton("« Back", callback_data="settings_back:main")],
     ]
 
     await query.edit_message_text(
-        "📊 *Category Settings*\n\nManage your spending categories:",
+        "📋 *Category Settings*\n\nManage your spending categories:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown",
+    )
+
+
+async def show_data_section(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show data management section."""
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    log_user_action(user_id, "viewing data management")
+
+    # Create keyboard with data management options
+    keyboard = [
+        [InlineKeyboardButton("📤 Export Data", callback_data="settings_action:export")],
+        [InlineKeyboardButton("📥 Import Data", callback_data="settings_action:import")],
+        [InlineKeyboardButton("« Back", callback_data="settings_back:main")],
+    ]
+
+    await query.edit_message_text(
+        "📊 *Data Management*\n\nExport or import your spending data:",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown",
     )

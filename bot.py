@@ -23,21 +23,16 @@ from handlers.import_csv import (
 from handlers.list import handle_list_callback, list_spendings_handler
 from handlers.report import handle_chart_callback, handle_report_callback, report_handler
 from handlers.search import handle_search_callback, search_conversation_handler, start_search
-from handlers.settings.category import (
+from handlers.settings import (
     handle_add_category,
-    handle_remove_category,
-    handle_restore_category,
-)
-from handlers.settings.currency import (
     handle_add_currency,
-    handle_confirm_remove_currency,
-    handle_restore_currency,
+    handle_custom_input_request,
     handle_set_main_currency,
-)
-from handlers.settings.custom_input import handle_custom_input_request, handle_settings_text_input
-from handlers.settings.menu import (
     handle_settings_action,
     handle_settings_callback,
+    handle_settings_text_input,
+    handle_toggle_category,
+    handle_toggle_currency,
     settings_handler,
 )
 from handlers.spending import (
@@ -122,20 +117,16 @@ if __name__ == "__main__":
         CommandHandler(BOT_COMMANDS["start"]["command"], start_handler),
         CommandHandler(BOT_COMMANDS["list"]["command"], list_spendings_handler),
         CommandHandler(BOT_COMMANDS["report"]["command"], report_handler),
-        CommandHandler(BOT_COMMANDS["search"]["command"], start_search),
+        # Removed duplicate search command handler
         CommandHandler(BOT_COMMANDS["settings"]["command"], settings_handler),
         # Settings menu handlers
         CallbackQueryHandler(handle_settings_action, pattern=r"^settings_action:"),
         CallbackQueryHandler(handle_custom_input_request, pattern=r"^settings_custom:"),
         CallbackQueryHandler(handle_add_currency, pattern=r"^settings_add_currency:"),
-        CallbackQueryHandler(
-            handle_confirm_remove_currency, pattern=r"^settings_confirm_remove_currency:"
-        ),
-        CallbackQueryHandler(handle_restore_currency, pattern=r"^settings_restore_currency:"),
+        CallbackQueryHandler(handle_toggle_currency, pattern=r"^settings_toggle_currency:"),
         CallbackQueryHandler(handle_set_main_currency, pattern=r"^settings_set_main_currency:"),
         CallbackQueryHandler(handle_add_category, pattern=r"^settings_add_category:"),
-        CallbackQueryHandler(handle_remove_category, pattern=r"^settings_remove_category:"),
-        CallbackQueryHandler(handle_restore_category, pattern=r"^settings_restore_category:"),
+        CallbackQueryHandler(handle_toggle_category, pattern=r"^settings_toggle_category:"),
         # Original handlers
         CallbackQueryHandler(handle_report_callback, pattern=r"^month:\d{2}:\d{4}$"),
         CallbackQueryHandler(handle_chart_callback, pattern=r"^chart:(bar|pie):\d{1,2}:\d{4}$"),

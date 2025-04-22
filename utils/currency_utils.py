@@ -122,16 +122,58 @@ async def restore_archived_currency(user_id: int, currency_code: str) -> Tuple[b
         return False, f"Error restoring currency: {e}"
 
 
+async def toggle_currency_status(user_id: int, currency_code: str) -> Tuple[bool, str, bool]:
+    """Toggle the active status of a currency.
+
+    If active, it will be deactivated.
+    If inactive, it will be activated.
+
+    Args:
+        user_id: The user ID
+        currency_code: The currency code to toggle
+
+    Returns:
+        Tuple containing (success, message, is_active_now)
+    """
+    try:
+        # Check current status
+        is_archived = currency_code in await db.get_archived_currencies(user_id)
+
+        if is_archived:
+            # Currency is archived, unarchive it (activate)
+            success, message = await restore_archived_currency(user_id, currency_code)
+            return success, message, True
+        else:
+            # Currency is active, archive it (deactivate)
+            success, message, was_main = await remove_currency(user_id, currency_code, archive=True)
+            return success, message, False
+
+    except Exception as e:
+        logger.error(f"Error toggling currency {currency_code} status for user {user_id}: {e}")
+        return False, f"Error toggling currency status: {e}", False
+
+
 async def set_main_currency(user_id: int, currency_code: str) -> Tuple[bool, str]:
-    """Set a currency as the main currency.
+    """Set a currency as the main currency for a user.
 
     Returns:
         Tuple containing (success, message)
     """
     try:
+        # Check if the currency exists for this user
+        currencies = await db.get_user_currencies(user_id)
+        if currency_code not in currencies:
+            return False, f"Currency {currency_code} is not in your currencies."
+
+        # Check if it's already the main currency
+        current_main = await db.get_user_main_currency(user_id)
+        if currency_code == current_main:
+            return False, f"{currency_code} is already your main currency."
+
         await db.set_user_main_currency(user_id, currency_code)
         log_user_action(user_id, f"set main currency to {currency_code}")
-        return True, f"Main currency set to {currency_code}"
+        return True, f"{currency_code} has been set as your main currency!"
+
     except Exception as e:
         logger.error(f"Error setting main currency {currency_code} for user {user_id}: {e}")
         return False, f"Error setting main currency: {e}"
