@@ -12,7 +12,6 @@ from utils.currency_utils import (
     restore_archived_currency,
     set_main_currency,
 )
-from utils.logging import logger
 
 
 async def show_add_currency_options(update: Update, user_id: int) -> None:
@@ -108,7 +107,11 @@ async def show_remove_currency_options(update: Update, user_id: int) -> None:
             # Mark main currency with a check mark
             label = f"{currency} {'✓' if currency == current_main else ''}"
             keyboard.append(
-                [InlineKeyboardButton(label, callback_data=f"settings_remove_currency:{currency}")]
+                [
+                    InlineKeyboardButton(
+                        label, callback_data=f"settings_confirm_remove_currency:{currency}"
+                    )
+                ]
             )
 
         keyboard.append([create_back_button("settings_section:currency")])
@@ -280,56 +283,14 @@ async def handle_add_currency(update: Update, _: ContextTypes.DEFAULT_TYPE) -> N
         )
 
 
-async def handle_remove_currency(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle archiving a currency from the settings menu."""
-    query = update.callback_query
-    await query.answer()
-    user_id = query.from_user.id
-
-    currency = query.data.split(":")[1]
-    log_user_action(user_id, f"archiving currency {currency} from settings")
-
-    try:
-        # Check if currency is set as main currency
-        current_main = await db.get_user_main_currency(user_id)
-        if current_main == currency:
-            # Confirm archiving of main currency
-            keyboard = [
-                [
-                    InlineKeyboardButton(
-                        "Yes, Archive", callback_data=f"settings_confirm_remove_currency:{currency}"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "No, Cancel", callback_data="settings_action:remove_currency"
-                    )
-                ],
-            ]
-            await query.edit_message_text(
-                f"⚠️ {currency} is your main currency. Are you sure you want to archive it?",
-                reply_markup=InlineKeyboardMarkup(keyboard),
-            )
-            return
-
-        # Otherwise proceed with archiving
-        await process_currency_removal(update, user_id, currency)
-    except Exception as e:
-        await handle_db_error(query, f"archiving currency {currency}", e)
-        await query.edit_message_text(
-            f"❌ Error archiving currency: {e}",
-            reply_markup=create_error_keyboard("settings_action:remove_currency"),
-        )
-
-
 async def handle_confirm_remove_currency(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle confirmation for archiving a main currency."""
+    """Handle confirmation for archiving a currency."""
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
 
     currency = query.data.split(":")[1]
-    log_user_action(user_id, f"confirmed archiving of main currency {currency}")
+    log_user_action(user_id, f"confirmed archiving currency {currency}")
 
     await process_currency_removal(update, user_id, currency)
 

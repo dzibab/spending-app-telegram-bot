@@ -4,7 +4,6 @@ from handlers.settings.category import handle_add_category, handle_remove_catego
 from handlers.settings.currency import (
     handle_add_currency,
     handle_confirm_remove_currency,
-    handle_remove_currency,
     handle_set_main_currency,
 )
 from handlers.settings.custom_input import handle_custom_input_request, handle_settings_text_input
@@ -15,19 +14,18 @@ from handlers.settings.menu import (
 )
 
 __all__ = [
-    # Main settings menu
-    "settings_handler",
-    "handle_settings_callback",
-    "handle_settings_action",
-    # Currency settings
-    "handle_add_currency",
-    "handle_remove_currency",
-    "handle_confirm_remove_currency",
-    "handle_set_main_currency",
     # Category settings
     "handle_add_category",
-    "handle_remove_category",
+    # Currency settings
+    "handle_add_currency",
+    "handle_confirm_remove_currency",
     # Custom text input handler
     "handle_custom_input_request",
+    "handle_remove_category",
+    "handle_set_main_currency",
+    "handle_settings_action",
+    "handle_settings_callback",
     "handle_settings_text_input",
+    # Main settings menu
+    "settings_handler",
 ]

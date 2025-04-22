@@ -11,7 +11,6 @@ DEFAULT_CATEGORIES = [
 ]
 
 BOT_COMMANDS = {
-    # Frequently used commands - directly available in the main menu
     "start": {
         "command": "start",
         "description": "Start the bot",
@@ -54,7 +53,6 @@ BOT_COMMANDS = {
         "frequency": "medium",
         "category": "essential",
     },
-    # Less frequently used commands - available through settings menu
     "add_category": {
         "command": "add_category",
         "description": "Add a category",
@@ -62,13 +60,7 @@ BOT_COMMANDS = {
         "frequency": "low",
         "category": "category_settings",
     },
-    "remove_category": {
-        "command": "remove_category",
-        "description": "Remove a category",
-        "help": "Remove an existing category",
-        "frequency": "low",
-        "category": "category_settings",
-    },
+    # Removed "remove_category" command as it's now handled in the settings menu
     "add_currency": {
         "command": "add_currency",
         "description": "Add a currency",
@@ -76,20 +68,7 @@ BOT_COMMANDS = {
         "frequency": "low",
         "category": "currency_settings",
     },
-    "remove_currency": {
-        "command": "remove_currency",
-        "description": "Remove a currency",
-        "help": "Remove an existing currency",
-        "frequency": "low",
-        "category": "currency_settings",
-    },
-    "main_currency": {
-        "command": "main_currency",
-        "description": "Choose main currency",
-        "help": "Set your main currency for reports",
-        "frequency": "low",
-        "category": "currency_settings",
-    },
+    # Removed "main_currency" command as it's now handled in the settings menu
     "export": {
         "command": "export",
         "description": "Export spendings",

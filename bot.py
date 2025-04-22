@@ -15,14 +15,6 @@ from constants import BOT_COMMANDS
 from db import db
 from handlers.category import (
     add_category_conversation_handler,
-    handle_remove_category_callback,
-    remove_category_handler,
-)
-from handlers.currency import (
-    add_currency_conversation_handler,
-    handle_cancel_remove_currency,
-    handle_remove_currency_callback,
-    remove_currency_handler,
 )
 from handlers.export_csv import export_spendings_handler, handle_export_callback
 from handlers.import_csv import (
@@ -33,7 +25,6 @@ from handlers.import_csv import (
     send_import_template,
 )
 from handlers.list import handle_list_callback, list_spendings_handler
-from handlers.main_currency import choose_main_currency_handler, handle_main_currency_callback
 from handlers.report import handle_chart_callback, handle_report_callback, report_handler
 from handlers.search import handle_search_callback, search_conversation_handler
 from handlers.settings.category import (
@@ -44,7 +35,6 @@ from handlers.settings.category import (
 from handlers.settings.currency import (
     handle_add_currency,
     handle_confirm_remove_currency,
-    handle_remove_currency,
     handle_restore_currency,
     handle_set_main_currency,
 )
@@ -134,16 +124,12 @@ if __name__ == "__main__":
         CommandHandler(BOT_COMMANDS["start"]["command"], start_handler),
         CommandHandler(BOT_COMMANDS["list"]["command"], list_spendings_handler),
         CommandHandler(BOT_COMMANDS["report"]["command"], report_handler),
-        CommandHandler(BOT_COMMANDS["remove_currency"]["command"], remove_currency_handler),
-        CommandHandler(BOT_COMMANDS["remove_category"]["command"], remove_category_handler),
         CommandHandler(BOT_COMMANDS["export"]["command"], export_spendings_handler),
-        CommandHandler(BOT_COMMANDS["main_currency"]["command"], choose_main_currency_handler),
         CommandHandler(BOT_COMMANDS["settings"]["command"], settings_handler),
         # Settings menu handlers
         CallbackQueryHandler(handle_settings_action, pattern=r"^settings_action:"),
         CallbackQueryHandler(handle_custom_input_request, pattern=r"^settings_custom:"),
         CallbackQueryHandler(handle_add_currency, pattern=r"^settings_add_currency:"),
-        CallbackQueryHandler(handle_remove_currency, pattern=r"^settings_remove_currency:"),
         CallbackQueryHandler(
             handle_confirm_remove_currency, pattern=r"^settings_confirm_remove_currency:"
         ),
@@ -155,11 +141,6 @@ if __name__ == "__main__":
         # Original handlers
         CallbackQueryHandler(handle_report_callback, pattern=r"^month:\d{2}:\d{4}$"),
         CallbackQueryHandler(handle_chart_callback, pattern=r"^chart:(bar|pie):\d{1,2}:\d{4}$"),
-        CallbackQueryHandler(handle_remove_currency_callback, pattern=r"^remove_currency:"),
-        CallbackQueryHandler(handle_confirm_remove_currency, pattern=r"^confirm_remove_currency:"),
-        CallbackQueryHandler(handle_cancel_remove_currency, pattern=r"^cancel_remove_currency$"),
-        CallbackQueryHandler(handle_remove_category_callback, pattern=r"^remove_category:"),
-        CallbackQueryHandler(handle_main_currency_callback, pattern=r"^main_currency:"),
         CallbackQueryHandler(handle_list_callback, pattern=r"^list_(page|detail|delete):\d+"),
         CallbackQueryHandler(handle_search_callback, pattern=r"^search_(page|detail|back|delete)"),
         CallbackQueryHandler(handle_settings_callback, pattern=r"^settings_section:"),
@@ -173,7 +154,6 @@ if __name__ == "__main__":
         CallbackQueryHandler(handle_import_confirmation, pattern=r"^import_confirm:"),
         # Conversation handlers
         add_spending_conversation_handler,
-        add_currency_conversation_handler,
         add_category_conversation_handler,
         search_conversation_handler,
         import_conversation_handler,
