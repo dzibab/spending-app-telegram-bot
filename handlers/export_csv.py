@@ -22,6 +22,7 @@ EXPORT_RANGES = {
 async def export_spendings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Handler for /export command - shows interactive export options."""
     user_id = update.effective_user.id
+    logger.info(f"User {user_id} initiated export process")
     log_user_action(user_id, "accessed export options")
 
     # Show date range selection keyboard
@@ -30,6 +31,7 @@ async def export_spendings_handler(update: Update, _: ContextTypes.DEFAULT_TYPE)
         keyboard.append([InlineKeyboardButton(label, callback_data=f"export_range:{key}")])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
+    logger.debug(f"Showing export options menu to user {user_id}")
 
     await update.message.reply_text(
         "📤 *Export Your Spending Data*\n\nSelect a time range to export:",
@@ -49,9 +51,12 @@ async def handle_export_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -
     action = data[0]
     value = data[1] if len(data) > 1 else None
 
+    logger.debug(f"Export callback: action={action}, value={value} for user {user_id}")
+
     if action == "export_range":
         # User selected a date range
         date_range = value
+        logger.info(f"User {user_id} selected export range: {date_range}")
         log_user_action(user_id, f"selected export range: {date_range}")
 
         # Process the export directly
@@ -59,6 +64,7 @@ async def handle_export_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -
 
     elif action == "export_back":
         # Go back to data management menu in settings
+        logger.debug(f"User {user_id} navigated back from export options")
         keyboard = [
             [InlineKeyboardButton("📤 Export Spendings", callback_data="settings_action:export")],
             [InlineKeyboardButton("📥 Import Spendings", callback_data="settings_action:import")],
@@ -78,26 +84,34 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
     start_date = None
     end_date = None
 
+    logger.info(f"Beginning export process for user {user_id} with date range '{date_range}'")
+
     try:
         # Determine the date range
         now = datetime.now()
 
         if date_range == "all":
             # All time, no filtering
+            logger.debug(f"User {user_id} exporting all spending records")
             pass
         elif date_range == "year":
             start_date = datetime(now.year, 1, 1)
+            logger.debug(f"User {user_id} exporting records from {start_date.isoformat()}")
         elif date_range == "6months":
             start_date = now - timedelta(days=180)
+            logger.debug(f"User {user_id} exporting records from {start_date.isoformat()}")
         elif date_range == "3months":
             start_date = now - timedelta(days=90)
+            logger.debug(f"User {user_id} exporting records from {start_date.isoformat()}")
         elif date_range == "1month":
             start_date = now - timedelta(days=30)
+            logger.debug(f"User {user_id} exporting records from {start_date.isoformat()}")
 
         # Get all spendings based on date filter
         await query.edit_message_text(
             "Preparing your export data...\nThis may take a moment for large datasets."
         )
+        logger.debug(f"Notified user {user_id} that export is being prepared")
 
         # Create CSV in memory before fetching data to prepare headers
         output = StringIO()
@@ -106,6 +120,7 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
         # Write header
         headers = ["Date", "Description", "Amount", "Currency", "Category"]
         writer.writerow(headers)
+        logger.debug(f"Created CSV headers: {headers}")
 
         # Format date range for filename
         if date_range == "all":
@@ -121,16 +136,24 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
         else:
             date_str = now.strftime("%Y%m%d")
 
+        filename = f"spendings_{date_str}.csv"
+        logger.debug(f"Export filename will be: {filename}")
+
         # Use the optimized streaming approach
         if start_date:
+            logger.debug(f"Using date-filtered export for user {user_id}")
             total_count = await process_export_in_chunks(
                 output, writer, user_id, start_date, end_date
             )
         else:
             # Use existing function for "all time" with streaming
+            logger.debug(f"Using all-time export for user {user_id}")
             total_count = await process_export_all_streaming(output, writer, user_id)
 
+        logger.info(f"Export completed for user {user_id}: {total_count} records processed")
+
         if total_count == 0:
+            logger.info(f"No records found for user {user_id} with date range '{date_range}'")
             log_user_action(user_id, "attempted to export but has no spendings in selected range")
             await query.edit_message_text(
                 "No spendings found in the selected date range.",
@@ -153,13 +176,15 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
 
         # Send file
         await query.edit_message_text("Export ready! Sending your file...")
+        logger.debug(f"Sending CSV export to user {user_id}")
 
         await query._bot.send_document(
             chat_id=query.message.chat_id,
             document=output.getvalue().encode(),
-            filename=f"spendings_{date_str}.csv",
+            filename=filename,
             caption=f"Here are your exported spendings ({total_count} records)",
         )
+        logger.debug(f"CSV file sent to user {user_id}")
 
         # Show completion message with new export option
         await query.message.reply_text(
@@ -181,8 +206,10 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
         )
 
         log_user_action(user_id, f"successfully exported {total_count} spendings to CSV")
+        logger.info(f"Export successfully completed for user {user_id}: {total_count} records")
 
     except Exception as e:
+        logger.error(f"Export failed for user {user_id}: {str(e)}", exc_info=True)
         log_user_action(user_id, f"error during export: {e}")
         await query.edit_message_text(
             f"❌ Export failed: {e}\n\nPlease try again later.",
@@ -196,8 +223,9 @@ async def process_export(update: Update, user_id: int, date_range: str) -> None:
         if output:
             try:
                 output.close()
+                logger.debug(f"Closed StringIO resource for user {user_id}'s export")
             except Exception as e:
-                logger.error(f"Failed to close StringIO: {e}")
+                logger.error(f"Failed to close StringIO for user {user_id}: {e}")
 
 
 async def process_export_in_chunks(output_stream, writer, user_id, start_date, end_date=None):
@@ -213,6 +241,9 @@ async def process_export_in_chunks(output_stream, writer, user_id, start_date, e
     Returns:
         Total number of records exported
     """
+    logger.debug(
+        f"Starting chunked export for user {user_id} from {start_date} to {end_date or 'now'}"
+    )
     total_count = 0
     chunk_size = 1000
 
@@ -235,6 +266,7 @@ async def process_export_in_chunks(output_stream, writer, user_id, start_date, e
         await cursor.execute(count_sql, params)
         row = await cursor.fetchone()
         expected_count = row[0] if row else 0
+        logger.info(f"Found {expected_count} records to export for user {user_id}")
 
         if expected_count == 0:
             return 0
@@ -245,13 +277,17 @@ async def process_export_in_chunks(output_stream, writer, user_id, start_date, e
         # Process in chunks
         offset = 0
         while True:
-            await cursor.execute(f"{sql} LIMIT {chunk_size} OFFSET {offset}", params)
+            chunk_sql = f"{sql} LIMIT {chunk_size} OFFSET {offset}"
+            logger.debug(f"Executing chunk query with offset {offset}: {chunk_sql}")
+            await cursor.execute(chunk_sql, params)
             rows = await cursor.fetchall()
 
             if not rows:
+                logger.debug(f"No more rows found at offset {offset}")
                 break
 
             # Write chunk to CSV
+            chunk_count = 0
             for row in rows:
                 spending = Spending.from_row(tuple(row))
                 writer.writerow(
@@ -264,12 +300,19 @@ async def process_export_in_chunks(output_stream, writer, user_id, start_date, e
                     ]
                 )
                 total_count += 1
+                chunk_count += 1
+
+            logger.debug(
+                f"Processed chunk of {chunk_count} records, total so far: {total_count}/{expected_count}"
+            )
 
             if len(rows) < chunk_size:
+                logger.debug(f"Last chunk processed (only {len(rows)} rows)")
                 break
 
             offset += chunk_size
 
+    logger.info(f"Completed chunked export for user {user_id}: {total_count} records exported")
     return total_count
 
 
@@ -284,6 +327,7 @@ async def process_export_all_streaming(output_stream, writer, user_id):
     Returns:
         Count of exported records
     """
+    logger.debug(f"Starting all-time streaming export for user {user_id}")
     total_count = 0
     chunk_size = 1000
 
@@ -293,6 +337,7 @@ async def process_export_all_streaming(output_stream, writer, user_id):
         await cursor.execute("SELECT COUNT(*) FROM spendings WHERE user_id = ?", (user_id,))
         row = await cursor.fetchone()
         expected_count = row[0] if row else 0
+        logger.info(f"Found {expected_count} total records to export for user {user_id}")
 
         if expected_count == 0:
             return 0
@@ -300,6 +345,7 @@ async def process_export_all_streaming(output_stream, writer, user_id):
         # Process in chunks
         offset = 0
         while True:
+            logger.debug(f"Fetching chunk at offset {offset}")
             await cursor.execute(
                 """
                 SELECT *
@@ -313,9 +359,11 @@ async def process_export_all_streaming(output_stream, writer, user_id):
             rows = await cursor.fetchall()
 
             if not rows:
+                logger.debug(f"No more rows found at offset {offset}")
                 break
 
             # Write chunk to CSV
+            chunk_count = 0
             for row in rows:
                 spending = Spending.from_row(tuple(row))
                 writer.writerow(
@@ -328,10 +376,17 @@ async def process_export_all_streaming(output_stream, writer, user_id):
                     ]
                 )
                 total_count += 1
+                chunk_count += 1
+
+            logger.debug(
+                f"Processed chunk of {chunk_count} records, total so far: {total_count}/{expected_count}"
+            )
 
             if len(rows) < chunk_size:
+                logger.debug(f"Last chunk processed (only {len(rows)} rows)")
                 break
 
             offset += chunk_size
 
+    logger.info(f"Completed all-time export for user {user_id}: {total_count} records exported")
     return total_count

@@ -18,7 +18,7 @@ file_formatter = logging.Formatter(
 
 # Create console handler with INFO level
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.WARNING)
+console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(console_formatter)
 
 # Create file handler with DEBUG level and rotation
