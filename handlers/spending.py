@@ -116,8 +116,8 @@ async def handle_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data["currency"] = currency
 
-    # Fetch user-specific categories
-    categories = await db.get_user_categories(user_id)
+    # Fetch user-specific categories (only active ones)
+    categories = await db.get_user_categories(user_id, include_archived=False)
 
     # Get frequently used categories
     try:
@@ -166,7 +166,8 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Validate category name
     is_valid, error_message = validate_category(category)
     if not is_valid:
-        categories = await db.get_user_categories(user_id)
+        # Explicitly get only active categories
+        categories = await db.get_user_categories(user_id, include_archived=False)
         # Get frequently used categories to show them first
         try:
             freq_categories = await db.get_frequently_used_categories(user_id, 3)
@@ -184,7 +185,8 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return CATEGORY
 
     # Validate that the user has this category
-    categories = await db.get_user_categories(user_id)
+    # Explicitly get only active categories
+    categories = await db.get_user_categories(user_id, include_archived=False)
     if category not in categories:
         # Get frequently used categories to show them first
         try:
