@@ -1346,10 +1346,11 @@ class Database:
             List of category names ordered by frequency of use
         """
         query = """
-            SELECT category, COUNT(*) as count
-            FROM spendings
-            WHERE user_id = ?
-            GROUP BY category
+            SELECT s.category, COUNT(*) as count
+            FROM spendings s
+            JOIN categories c ON s.user_id = c.user_id AND s.category = c.category_name
+            WHERE s.user_id = ? AND c.is_active = 1
+            GROUP BY s.category
             ORDER BY count DESC
             LIMIT ?
         """

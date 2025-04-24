@@ -212,8 +212,9 @@ async def suggest_category_from_description(user_id: int, description: str, db) 
     if best_matches:
         logger.debug(f"Found {len(best_matches)} keyword matches: {best_matches}")
         # Get user categories to make sure the suggested one is available
+        # Only get active categories, not archived ones
         try:
-            user_categories = await db.get_user_categories(user_id)
+            user_categories = await db.get_user_categories(user_id, include_archived=False)
             for match in best_matches:
                 if match in user_categories:
                     logger.debug(f"Selected '{match}' as the suggested category based on keywords")
@@ -249,10 +250,20 @@ async def suggest_category_from_description(user_id: int, description: str, db) 
             result = await cursor.fetchone()
 
             if result:
+                # Check if this category is still active
+                category = result[0]
                 logger.debug(
-                    f"Found historical match with category '{result[0]}' based on spending history"
+                    f"Found historical match with category '{category}' based on spending history"
                 )
-                return result[0]  # Return the most frequent category for similar descriptions
+
+                # Get active categories to ensure the historical category is still active
+                active_categories = await db.get_user_categories(user_id, include_archived=False)
+                if category in active_categories:
+                    logger.debug(f"Historical category '{category}' is still active, using it")
+                    return category
+                else:
+                    logger.debug(f"Historical category '{category}' is archived, not suggesting it")
+                    return None
             else:
                 logger.debug("No historical matches found in spending history")
     except Exception as e:
