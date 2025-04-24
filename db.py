@@ -965,13 +965,15 @@ class Database:
 
                 # For very large datasets, we'll process in chunks
                 chunk_size = 1000
-                sql_with_limit = f"{sql} LIMIT {chunk_size}"
+                sql_with_limit = f"{sql} LIMIT ? OFFSET ?"
 
                 all_spendings = []
                 offset = 0
 
                 while True:
-                    await cursor.execute(f"{sql_with_limit} OFFSET {offset}", params)
+                    query_params = params.copy()
+                    query_params.extend([chunk_size, offset])
+                    await cursor.execute(sql_with_limit, query_params)
                     rows = await cursor.fetchall()
                     if not rows:
                         break
