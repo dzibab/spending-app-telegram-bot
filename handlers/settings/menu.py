@@ -154,6 +154,9 @@ async def handle_settings_action(update: Update, context: ContextTypes.DEFAULT_T
         show_main_currency_options,
         show_manage_currencies,
     )
+    from handlers.settings.data_deletion import (
+        show_delete_confirmation,
+    )
 
     match action:
         case "add_currency":
@@ -220,6 +223,10 @@ async def handle_settings_action(update: Update, context: ContextTypes.DEFAULT_T
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode="Markdown",
             )
+
+        case "delete_data":
+            # Show the first confirmation screen for data deletion
+            await show_delete_confirmation(update, context)
 
 
 async def show_currency_section(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
@@ -288,11 +295,12 @@ async def show_data_section(update: Update, _: ContextTypes.DEFAULT_TYPE) -> Non
     keyboard = [
         [InlineKeyboardButton("📤 Export Data", callback_data="settings_action:export")],
         [InlineKeyboardButton("📥 Import Data", callback_data="settings_action:import")],
+        [InlineKeyboardButton("🗑️ Delete All Data", callback_data="settings_action:delete_data")],
         [InlineKeyboardButton("« Back", callback_data="settings_back:main")],
     ]
 
     await query.edit_message_text(
-        "📊 *Data Management*\n\nExport or import your spending data:",
+        "📊 *Data Management*\n\nExport, import or delete your spending data:",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown",
     )

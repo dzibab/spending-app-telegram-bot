@@ -27,12 +27,14 @@ from handlers.settings import (
     handle_add_category,
     handle_add_currency,
     handle_custom_input_request,
+    handle_final_confirmation,
     handle_set_main_currency,
     handle_settings_action,
     handle_settings_callback,
     handle_settings_text_input,
     handle_toggle_category,
     handle_toggle_currency,
+    execute_data_deletion,
     settings_handler,
 )
 from handlers.spending import (
@@ -135,6 +137,9 @@ if __name__ == "__main__":
         CallbackQueryHandler(handle_settings_callback, pattern=r"^settings_section:"),
         CallbackQueryHandler(handle_settings_callback, pattern=r"^settings_back:"),
         CallbackQueryHandler(handle_settings_callback, pattern=r"^settings_cmd:"),
+        # Data deletion handlers
+        CallbackQueryHandler(handle_final_confirmation, pattern=r"^confirm_delete:"),
+        CallbackQueryHandler(execute_data_deletion, pattern=r"^execute_delete:"),
         # Export and import handlers
         CallbackQueryHandler(handle_export_callback, pattern=r"^export_range:"),
         CallbackQueryHandler(handle_export_callback, pattern=r"^export_back:"),

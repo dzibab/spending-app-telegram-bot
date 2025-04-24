@@ -7,6 +7,10 @@ from handlers.settings.currency import (
     handle_toggle_currency,
 )
 from handlers.settings.custom_input import handle_custom_input_request, handle_settings_text_input
+from handlers.settings.data_deletion import (
+    handle_final_confirmation,
+    execute_data_deletion,
+)
 from handlers.settings.menu import (
     handle_settings_action,
     handle_settings_callback,
@@ -24,6 +28,9 @@ __all__ = [
     # Custom text input handler
     "handle_custom_input_request",
     "handle_settings_text_input",
+    # Data deletion
+    "handle_final_confirmation",
+    "execute_data_deletion",
     # Main settings menu
     "handle_settings_action",
     "handle_settings_callback",

@@ -76,6 +76,27 @@ class Cache:
         else:
             self._data[cache_type] = {}
 
+    def clear_all_for_user(self, user_id: int) -> None:
+        """Clear all cache entries related to a specific user across all cache types.
+
+        Args:
+            user_id: The user ID whose cache entries should be cleared
+        """
+        for cache_type in self._data:
+            keys_to_remove = []
+            for key in self._data[cache_type]:
+                # Check if this is a user-specific cache entry
+                if isinstance(key, int) and key == user_id:
+                    keys_to_remove.append(key)
+                # Check for compound keys that include user_id
+                elif isinstance(key, str) and str(user_id) in key:
+                    keys_to_remove.append(key)
+
+            # Remove the identified keys
+            for key in keys_to_remove:
+                if key in self._data[cache_type]:
+                    del self._data[cache_type][key]
+
 
 class Database:
     """Handles database operations for the spending tracker bot."""
@@ -1359,6 +1380,59 @@ class Database:
 
         result = await self.execute_query(query, (user_id, category, limit))
         return [{"description": row[0], "amount": row[1], "currency": row[2]} for row in result]
+
+    async def delete_all_user_data(self, user_id: int) -> bool:
+        """Delete all data associated with a user.
+
+        This is a destructive operation that removes all user data including:
+        - All spendings
+        - All categories
+        - All currencies
+        - Main currency setting
+
+        Args:
+            user_id: The user ID whose data should be deleted
+
+        Returns:
+            Whether the operation was successful
+        """
+        logger.warning(f"Deleting ALL data for user {user_id}")
+        try:
+            async with self.transaction() as cursor:
+                # Delete all spendings
+                await cursor.execute("DELETE FROM spendings WHERE user_id = ?", (user_id,))
+                spendings_deleted = cursor.rowcount
+                logger.info(f"Deleted {spendings_deleted} spendings for user {user_id}")
+
+                # Delete all categories
+                await cursor.execute("DELETE FROM categories WHERE user_id = ?", (user_id,))
+                categories_deleted = cursor.rowcount
+                logger.info(f"Deleted {categories_deleted} categories for user {user_id}")
+
+                # Delete all currencies
+                await cursor.execute("DELETE FROM currencies WHERE user_id = ?", (user_id,))
+                currencies_deleted = cursor.rowcount
+                logger.info(f"Deleted {currencies_deleted} currencies for user {user_id}")
+
+                # Delete main currency setting
+                await cursor.execute("DELETE FROM main_currency WHERE user_id = ?", (user_id,))
+                main_currency_deleted = cursor.rowcount > 0
+                logger.info(
+                    f"Deleted main currency setting for user {user_id}: {main_currency_deleted}"
+                )
+
+                # Invalidate all caches
+                self._user_settings_cache.invalidate(self.CACHE_USER_CURRENCIES, user_id)
+                self._user_settings_cache.invalidate(self.CACHE_USER_CATEGORIES, user_id)
+                self._user_settings_cache.invalidate(self.CACHE_USER_MAIN_CURRENCY, user_id)
+                self._dynamic_data_cache.invalidate(self.CACHE_SPENDING_COUNT, user_id)
+                self._search_cache.clear_all_for_user(user_id)
+
+                logger.warning(f"Successfully deleted all data for user {user_id}")
+                return True
+        except Exception as e:
+            logger.error(f"Error deleting all data for user {user_id}: {e}")
+            return False
 
 
 # Create global database instance
